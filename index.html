@@ -131,6 +131,8 @@
           background: var(--dialog); cursor: pointer; font-family: Roboto, Arial, sans-serif; }
   .mini.sel { border: 2px solid var(--primary); padding: 10px; }
   .mini b { display: block; font-size: 11px; color: var(--muted); font-weight: 500; margin-bottom: 3px; }
+  .soundbox { border-top: 1px solid var(--line); margin-top: 6px; padding-top: 10px; }
+  .soundbox .chk { font-size: 13.5px; margin: 5px 0; }
   .notes { flex: 1; min-width: 260px; max-width: 420px; }
   .notes .panel p { font-size: 13.5px; line-height: 1.55; margin: 0 0 8px; color: #2D323C; }
   .kv { display: grid; grid-template-columns: 130px 1fr; gap: 6px 10px; font-size: 13px; }
@@ -256,6 +258,13 @@
           <h2 id="br-title"></h2>
           <p id="br-1"></p>
           <p id="br-2"></p>
+          <div class="soundbox">
+            <p class="meta" id="o-warn"></p>
+            <label class="chk"><input type="checkbox" id="o-tone" checked> <span id="o-tone-l"></span></label>
+            <label class="chk"><input type="checkbox" id="o-voice"> <span id="o-voice-l"></span></label>
+            <button class="big ghost" id="b-test" style="margin-top:4px"></button>
+            <p class="meta" id="o-note" style="margin:6px 0 0"></p>
+          </div>
           <div class="fill"></div>
           <button class="big" id="b-brief"></button>
         </section>
@@ -302,6 +311,7 @@
             <span>Assigned version</span><span id="lv-ver">assigned after the age check</span>
             <span>Alert</span><span id="lv-alert">–</span>
             <span>Last viewing time</span><span id="lv-view">–</span>
+            <span>Sound</span><span id="lv-sound">–</span>
           </div>
         </div>
         <div class="panel">
@@ -348,7 +358,7 @@
           <div class="card" style="margin-top:12px"><div class="t"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 1 21h22L12 2z" fill="#C62828"/></svg>Emergency alert: Extreme</div><div class="m" id="c-msg"></div></div>
           <div class="meta" id="c-count" style="margin-top:10px"></div>
           <div class="pills" id="c-checks" style="margin-top:8px"></div>
-          <div style="margin-top:12px"><button class="btn ghost sm" id="c-copy">Copy text</button> <span class="meta" id="c-copied"></span></div>
+          <div style="margin-top:12px"><button class="btn ghost sm" id="c-copy">Copy text</button> <button class="btn ghost sm" id="c-play">Play alert</button> <span class="meta" id="c-copied"></span></div>
         </div>
         <div class="panel">
           <h3>Drafts</h3>
@@ -447,7 +457,10 @@ const T = {
         lo: "Not likely", hi: "Very likely", att: "To show you're reading carefully, please select \"Agree\" for this item.", attO: ["Disagree", "Neutral", "Agree"],
         next: "Next", pStep: "Last step", pTitle: "Which alert would you want to get?", pSub: "Four versions of the same flood alert. Pick one.", opt: "Option", submit: "Submit",
         dTitle: "Thank you!", d1: "All the alerts you saw were made up for this study. In a real emergency, follow NDRRMC and your local disaster office.",
-        d2: "Your response was saved. See it in the Results tab.", again: "Start a new respondent" },
+        d2: "Your response was saved. See it in the Results tab.", again: "Start a new respondent",
+        warn: "Each alert plays a loud alert sound, like a real one. Turn your volume to a comfortable level first.",
+        toneL: "Alert sound", voiceL: "Read the alert aloud (experimental)", test: "Test sound",
+        testLine: "This is a test of the alert sound.", noVoice: "No Filipino voice on this device, so alerts won't be read aloud." },
   fil: { step: "Hakbang 2", brief: "Paano ito gagawin", b1: "May lalabas na alert sa screen ng cellphone. Basahin ito na parang natanggap mo mismo sa sarili mong cellphone.",
         b2: "Mawawala ito kapag pinindot mo ang OK o pagkalipas ng 30 segundo, at hindi mo na ito mababalikan.", start: "Ipakita ang unang alert",
         qStep: (i, n) => `Alert ${i} sa ${n}`, qTitle: "Tungkol sa alert na nakita mo", q1: "Tungkol saan ang alert?", q2: "Ano ang sinasabi ng alert na gawin mo?",
@@ -455,7 +468,10 @@ const T = {
         lo: "Hindi malamang", hi: "Siguradong susundin", att: "Para ipakitang maingat kang nagbabasa, piliin ang \"Sang-ayon\".", attO: ["Hindi sang-ayon", "Neutral", "Sang-ayon"],
         next: "Susunod", pStep: "Huling hakbang", pTitle: "Aling alert ang gusto mong matanggap?", pSub: "Apat na bersyon ng iisang flood alert. Pumili ng isa.", opt: "Opsyon", submit: "Isumite",
         dTitle: "Salamat!", d1: "Gawa-gawa lamang ang lahat ng alert para sa pag-aaral na ito. Sa totoong emergency, sundin ang NDRRMC at ang inyong lokal na disaster office.",
-        d2: "Na-save ang sagot mo. Makikita ito sa Results tab.", again: "Bagong respondent" },
+        d2: "Na-save ang sagot mo. Makikita ito sa Results tab.", again: "Bagong respondent",
+        warn: "May malakas na tunog ang bawat alert, gaya ng totoong alert. Ayusin muna ang volume sa komportableng lakas.",
+        toneL: "Tunog ng alert", voiceL: "Basahin nang malakas ang alert (experimental)", test: "Subukan ang tunog",
+        testLine: "Ito ay pagsubok sa tunog ng alert.", noVoice: "Walang Filipino na boses sa device na ito, kaya hindi babasahin nang malakas ang alerts." },
 };
 const SHOW_SECONDS = 30;
 const $ = id => document.getElementById(id);
@@ -475,8 +491,50 @@ function nextVersion() {
   const v = block.shift(); save("atlas-block", block); return v;
 }
 
+// ===================== Sound =====================
+// Alert tone modeled on the US Wireless Emergency Alert attention signal: 853 Hz + 960 Hz together,
+// one 2 s tone then two 1 s tones with 0.5 s gaps. Browsers only allow audio after a tap, which the flow always has.
+let actx = null, tone = null, soundToken = 0;
+function playTone() {
+  return new Promise(resolve => {
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === "suspended") actx.resume();
+      const g = actx.createGain(), t = actx.currentTime + 0.05;
+      g.gain.setValueAtTime(0, actx.currentTime); g.connect(actx.destination);
+      const oscs = [853, 960].map(f => { const o = actx.createOscillator(); o.type = "sine"; o.frequency.value = f; o.connect(g); o.start(t); o.stop(t + 5.1); return o; });
+      [[0, 2], [2.5, 3.5], [4, 5]].forEach(([a, b]) => { g.gain.setTargetAtTime(0.22, t + a, 0.01); g.gain.setTargetAtTime(0, t + b, 0.01); });
+      tone = { oscs, g };
+      setTimeout(resolve, 5200);
+    } catch (e) { resolve(); }
+  });
+}
+function voiceFor(fil) {
+  if (!("speechSynthesis" in window)) return null;
+  const vs = speechSynthesis.getVoices();
+  return fil ? vs.find(v => /^(fil|tl)/i.test(v.lang)) || null : vs.find(v => /^en[-_](PH|US|GB)/i.test(v.lang)) || vs.find(v => /^en/i.test(v.lang)) || null;
+}
+// Returns false when no suitable voice exists (a Filipino alert read by an English voice would be unfair to the Filipino versions)
+function speak(text, fil) {
+  const v = voiceFor(fil);
+  if (!v) return false;
+  const u = new SpeechSynthesisUtterance(text); u.voice = v; u.lang = v.lang; u.rate = 0.95;
+  speechSynthesis.cancel(); speechSynthesis.speak(u); return true;
+}
+function stopSound() {
+  soundToken++;
+  if (tone) { tone.oscs.forEach(o => { try { o.stop(); } catch (e) {} }); try { tone.g.disconnect(); } catch (e) {} tone = null; }
+  try { speechSynthesis.cancel(); } catch (e) {}
+}
+function voiceNote() {
+  const fil = S && S.version !== null && isFil(S.version);
+  $("o-note").textContent = $("o-voice").checked && fil && !voiceFor(true) ? L.noVoice : "";
+}
+if ("speechSynthesis" in window) speechSynthesis.onvoiceschanged = () => { if ($("s-brief").classList.contains("on")) voiceNote(); };
+
 // ===================== Navigation =====================
 function go(view) {
+  stopSound();
   document.querySelectorAll(".nav button").forEach(b => b.setAttribute("aria-selected", b.dataset.v === view));
   document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.id === "v-" + view));
   if (view === "results") renderResults();
@@ -504,9 +562,16 @@ document.querySelectorAll("[data-age]").forEach(b => b.onclick = () => {
   S.version = nextVersion(); L = isFil(S.version) ? T.fil : T.en;
   $("lv-ver").textContent = V_LABEL[V[S.version]];
   $("br-step").textContent = L.step; $("br-title").textContent = L.brief; $("br-1").textContent = L.b1; $("br-2").textContent = L.b2; $("b-brief").textContent = L.start;
-  setProgress(5); show("s-brief");
+  $("o-warn").textContent = L.warn; $("o-tone-l").textContent = L.toneL; $("o-voice-l").textContent = L.voiceL; $("b-test").textContent = L.test;
+  voiceNote(); setProgress(5); show("s-brief");
 });
-$("b-brief").onclick = showAlert;
+$("o-voice").onchange = voiceNote;
+$("b-test").onclick = () => {
+  stopSound(); const token = soundToken;
+  const run = $("o-tone").checked ? playTone() : Promise.resolve();
+  run.then(() => { if (token === soundToken && $("o-voice").checked) speak(L.testLine, isFil(S.version)); });
+};
+$("b-brief").onclick = () => { stopSound(); showAlert(); };
 
 function showAlert() {
   const h = HAZ[S.i];
@@ -517,13 +582,17 @@ function showAlert() {
   $("s-alert").classList.add("alerting");
   setProgress(10 + S.i * 22); show("s-alert");
   try { navigator.vibrate && navigator.vibrate([400, 150, 400]); } catch (e) {}
+  stopSound(); const token = soundToken, msg = h.v[S.version], fil = isFil(S.version);
+  const wantTone = $("o-tone").checked, wantVoice = $("o-voice").checked;
+  $("lv-sound").textContent = [wantTone ? "tone" : "", wantVoice ? (voiceFor(fil) ? "read aloud" : "no voice available") : ""].filter(Boolean).join(" + ") || "off";
+  (wantTone ? playTone() : Promise.resolve()).then(() => { if (token === soundToken && wantVoice) speak(msg, fil); });
   let left = SHOW_SECONDS; const ring = $("a-ring"); ring.style.transition = "none"; ring.style.width = "100%"; void ring.offsetWidth; ring.style.transition = "width 1s linear";
   shownAt = performance.now(); clearInterval(timer);
   timer = setInterval(() => { left--; ring.style.width = (left / SHOW_SECONDS * 100) + "%"; if (left <= 0) hideAlert(); }, 1000);
 }
 $("b-ok").onclick = hideAlert;
 function hideAlert() {
-  clearInterval(timer); S.view = Math.round((performance.now() - shownAt) / 100) / 10;
+  clearInterval(timer); stopSound(); S.view = Math.round((performance.now() - shownAt) / 100) / 10;
   $("lv-view").textContent = S.view + " s"; showQuestions();
 }
 function qTitle(box, t) { const d = document.createElement("div"); d.className = "q"; d.textContent = t; box.appendChild(d); }
@@ -654,6 +723,11 @@ function compose() {
 document.querySelectorAll("[data-lang]").forEach(b => b.onclick = () => {
   cLang = b.dataset.lang; document.querySelectorAll("[data-lang]").forEach(x => x.classList.toggle("on", x === b)); compose();
 });
+$("c-play").onclick = () => {
+  stopSound(); const token = soundToken, fil = cLang === "fil", text = $("c-msg").textContent;
+  $("c-copied").textContent = "";
+  playTone().then(() => { if (token === soundToken && !speak(text, fil)) $("c-copied").textContent = fil ? "No Filipino voice on this device" : "No English voice on this device"; });
+};
 $("c-copy").onclick = async () => { try { await navigator.clipboard.writeText($("c-msg").textContent); $("c-copied").textContent = "Copied"; } catch (e) { $("c-copied").textContent = "Select the preview text to copy it"; } };
 function renderDrafts() {
   const ds = load("atlas-drafts", []);
