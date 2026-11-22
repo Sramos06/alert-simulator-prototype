@@ -3,808 +3,815 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Alert Simulator Prototype</title>
-<meta name="description" content="Prototype of the web-based alert simulator and composer for a BSIT research study on emergency alert wording.">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+<title>Alert Simulator · Group Atlas</title>
+<meta name="description" content="Prototype of the alert simulator, alert composer, and evaluation tools for a BSIT research study on emergency alert completeness and language.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg:#F3F4F7; --surface:#FFFFFF; --ink:#14161B; --muted:#5C6371; --faint:#8B93A1; --line:#E0E3EA;
-    --primary:#1F5FD1; --primary-ink:#FFFFFF; --soft:#EAF0FC; --ok:#17784A; --bad:#B4261E;
-    --side:#12151B; --side-ink:#C8CEDA; --dialog:#F4F5F9; --radius:10px;
+    --bg:#F8FAFC; --surface:#FFFFFF; --ink:#0F172A; --ink2:#334155; --muted:#475569; --line:#E2E8F0; --line2:#CBD5E1;
+    --accent:#0369A1; --accent-ink:#FFFFFF; --accent-soft:#E0F2FE; --ok:#166534; --ok-soft:#DCFCE7; --bad:#B91C1C; --bad-soft:#FEE2E2;
+    --warn:#92400E; --warn-soft:#FEF3C7; --side:#0F172A; --side-ink:#CBD5E1; --r:6px;
+    --t-fast:150ms; --t:220ms;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; }
-  body { background: var(--bg); color: var(--ink); font-family: Inter, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+  body { background: var(--bg); color: var(--ink); font: 16px/1.5 "Atkinson Hyperlegible", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
   button, input, select, textarea { font: inherit; color: inherit; }
-  a { color: var(--primary); }
+  button { cursor: pointer; }
+  a { color: var(--accent); }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 
   /* ---------- Shell ---------- */
-  .shell { display: grid; grid-template-columns: 236px 1fr; min-height: 100vh; }
-  .side { background: var(--side); color: var(--side-ink); padding: 22px 14px; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; }
-  .brand { color: #fff; font-weight: 700; font-size: 15px; padding: 0 10px; }
-  .brand small { display: block; font-weight: 400; color: #8790A0; font-size: 12px; margin-top: 2px; }
+  .shell { display: grid; grid-template-columns: 232px 1fr; min-height: 100vh; }
+  .side { background: var(--side); color: var(--side-ink); padding: 22px 12px; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; }
+  .brand { color: #fff; font-weight: 700; font-size: 16px; padding: 0 10px; }
+  .brand small { display: block; font-weight: 400; color: #94A3B8; font-size: 13px; }
   .nav { margin-top: 22px; display: flex; flex-direction: column; gap: 2px; }
   .nav button { display: flex; align-items: center; gap: 10px; text-align: left; background: none; border: 0; color: var(--side-ink);
-                padding: 10px; border-radius: 8px; cursor: pointer; font-size: 14px; }
-  .nav button svg { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-  .nav button:hover { background: #1B2029; }
-  .nav button[aria-selected="true"] { background: #222936; color: #fff; }
-  .side .foot { margin-top: auto; font-size: 11px; color: #7D8695; line-height: 1.5; padding: 0 10px; }
-  .content { padding: 28px 32px 48px; min-width: 0; }
-  .view { display: none; max-width: 1080px; } .view.on { display: block; }
-  .view h1 { font-size: 24px; font-weight: 600; margin: 0 0 6px; letter-spacing: -.01em; }
-  .lede { color: var(--muted); font-size: 14.5px; margin: 0 0 22px; max-width: 720px; line-height: 1.55; }
-  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; margin-bottom: 16px; }
-  .panel > h3 { font-size: 14px; font-weight: 600; margin: 0 0 12px; }
-  .row { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
-  .grow { flex: 1; min-width: 280px; }
-  .meta { font-size: 12.5px; color: var(--muted); }
-  .warn { color: var(--bad); }
-  label.f { display: block; font-size: 12.5px; color: var(--muted); margin: 12px 0 5px; font-weight: 500; }
-  input[type=text], select, textarea { width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
-  input[type=text]:focus, select:focus, textarea:focus { outline: 2px solid var(--soft); border-color: var(--primary); }
-  textarea { min-height: 120px; resize: vertical; line-height: 1.5; }
-  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px; border-radius: 8px; border: 1px solid var(--primary); background: var(--primary);
-         color: var(--primary-ink); cursor: pointer; font-weight: 500; font-size: 13.5px; }
-  .btn.ghost { background: #fff; color: var(--ink); border-color: var(--line); }
-  .btn.ghost:hover { border-color: #c5cbd6; }
-  .btn.sm { padding: 6px 10px; font-size: 12.5px; }
-  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-  .seg button { border: 0; background: #fff; padding: 6px 12px; font-size: 12.5px; cursor: pointer; }
-  .seg button.on { background: var(--ink); color: #fff; }
-  .chk { display: flex; gap: 9px; align-items: flex-start; font-size: 14px; margin: 7px 0; line-height: 1.4; cursor: pointer; }
-  .chk input { margin-top: 3px; accent-color: var(--primary); }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { color: var(--muted); font-weight: 500; font-size: 12px; }
-  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-  .pills { display: flex; flex-wrap: wrap; gap: 6px; }
-  .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); background: #fff; }
-  .pill.yes { color: var(--ok); border-color: #CBE6D7; background: #F2FAF5; }
-  .pill.no { color: var(--bad); border-color: #F1D0CD; background: #FDF4F3; }
-  .status { font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
-  .status.draft { background: #F1F2F5; color: var(--muted); } .status.approved { background: #E7F5EC; color: var(--ok); }
-  mark { background: #FFF0B3; color: inherit; border-radius: 2px; padding: 0 1px; }
+                min-height: 44px; padding: 8px 10px; border-radius: var(--r); font-size: 15px; transition: background var(--t-fast); }
+  .nav button:hover { background: #1E293B; }
+  .nav button[aria-current="page"] { background: #1E293B; color: #fff; box-shadow: inset 3px 0 0 #38BDF8; }
+  .side .foot { margin-top: auto; font-size: 12.5px; color: #94A3B8; line-height: 1.5; padding: 0 10px; }
+  .content { padding: 30px 36px 56px; min-width: 0; }
+  .view { display: none; max-width: 1100px; } .view.on { display: block; animation: in var(--t) ease-out; }
+  @keyframes in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  h1 { font-size: 28px; line-height: 1.2; margin: 0 0 6px; letter-spacing: -.01em; }
+  h2 { font-size: 18px; margin: 0 0 12px; }
+  .lede { color: var(--muted); margin: 0 0 24px; max-width: 70ch; }
+  .sec { border-top: 1px solid var(--line); padding: 20px 0 8px; }
+  .sec:first-of-type { border-top: 0; padding-top: 4px; }
+  .box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; }
+  .cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
+  .meta { font-size: 14px; color: var(--muted); }
+  .num { font-variant-numeric: tabular-nums; }
+  label.f { display: block; font-size: 14px; font-weight: 700; margin: 14px 0 6px; }
+  label.f span { font-weight: 400; color: var(--muted); }
+  input[type=text], input[type=time], select, textarea { width: 100%; min-height: 44px; padding: 9px 12px; border: 1px solid var(--line2); border-radius: var(--r); background: #fff; }
+  textarea { min-height: 120px; resize: vertical; }
+  input:focus, select:focus, textarea:focus { outline: 3px solid var(--accent-soft); border-color: var(--accent); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 9px 16px; border-radius: var(--r);
+         border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 15px; transition: background var(--t-fast), border-color var(--t-fast); }
+  .btn:hover { background: #075985; }
+  .btn.ghost { background: #fff; color: var(--ink); border-color: var(--line2); }
+  .btn.ghost:hover { border-color: var(--ink2); background: #fff; }
+  .btn.danger { background: #fff; color: var(--bad); border-color: #FCA5A5; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btns { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .chk { display: flex; gap: 10px; align-items: flex-start; margin: 8px 0; cursor: pointer; }
+  .chk input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--accent); flex: none; }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 700; font-size: 13px; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tag { display: inline-block; font-size: 13px; font-weight: 700; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line2); white-space: nowrap; }
+  .tag.yes { color: var(--ok); background: var(--ok-soft); border-color: #BBF7D0; }
+  .tag.no { color: var(--bad); background: var(--bad-soft); border-color: #FECACA; }
+  .tag.warn { color: var(--warn); background: var(--warn-soft); border-color: #FDE68A; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .note { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 10px 14px; border-radius: 0 var(--r) var(--r) 0; font-size: 14.5px; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--ink); color: #fff; padding: 10px 16px;
+           border-radius: var(--r); font-size: 14.5px; opacity: 0; pointer-events: none; transition: opacity var(--t), transform var(--t); z-index: 50; }
+  .toast.on { opacity: 1; transform: translateX(-50%); }
 
-  /* ---------- Home ---------- */
-  .hero { padding: 6px 0 18px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
-  .hero .kicker { font-size: 12px; color: var(--muted); font-weight: 500; }
-  .hero h1 { font-size: 30px; line-height: 1.2; margin: 6px 0 10px; max-width: 760px; }
-  .hero p { font-size: 15.5px; line-height: 1.6; color: #2D323C; max-width: 740px; margin: 0; }
-  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-  .matrix { display: grid; grid-template-columns: 120px 1fr 1fr; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 13.5px; }
-  .matrix div { padding: 11px 12px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); background: #fff; }
-  .matrix .h { background: #F7F8FA; color: var(--muted); font-weight: 500; font-size: 12.5px; }
-  .matrix b { display: block; font-size: 13px; }
-  .links { display: flex; flex-direction: column; }
-  .links button { display: flex; justify-content: space-between; align-items: center; gap: 12px; text-align: left; border: 0; border-bottom: 1px solid var(--line);
-                  background: none; padding: 13px 2px; cursor: pointer; }
-  .links button:last-child { border-bottom: 0; }
-  .links b { font-weight: 600; font-size: 14px; display: block; }
-  .links span.d { font-size: 13px; color: var(--muted); }
-  .links .arrow { color: var(--faint); font-size: 18px; }
-  .flow { counter-reset: s; list-style: none; padding: 0; margin: 0; }
-  .flow li { counter-increment: s; position: relative; padding: 0 0 12px 34px; font-size: 14px; line-height: 1.5; }
-  .flow li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 22px; height: 22px; border-radius: 50%; background: var(--soft); color: var(--primary);
-                     font-size: 12px; font-weight: 600; display: grid; place-items: center; }
+  /* ---------- Overview ---------- */
+  .matrix { display: grid; grid-template-columns: 1.3fr 1fr 1fr; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: #fff; }
+  .matrix div { padding: 12px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); font-size: 15px; }
+  .matrix div:nth-child(3n) { border-right: 0; } .matrix div:nth-last-child(-n+3) { border-bottom: 0; }
+  .matrix .h { background: #F1F5F9; font-weight: 700; font-size: 14px; }
+  .matrix b { font-size: 20px; margin-right: 6px; }
+  .steps { list-style: none; counter-reset: s; padding: 0; margin: 0; }
+  .steps li { counter-increment: s; position: relative; padding: 0 0 12px 36px; }
+  .steps li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--accent); color: var(--accent);
+                      font-size: 13px; font-weight: 700; display: grid; place-items: center; }
+  .go { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+  .go button { display: flex; justify-content: space-between; align-items: center; gap: 12px; text-align: left; border: 0; border-bottom: 1px solid var(--line);
+               background: none; padding: 14px 4px; min-height: 56px; transition: background var(--t-fast); }
+  .go button:hover { background: #F1F5F9; }
+  .go b { display: block; } .go span.d { font-size: 14.5px; color: var(--muted); }
 
-  /* ---------- Phone + lock screen ---------- */
-  .stage { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
-  .phone { width: 360px; height: 740px; background: var(--surface); border-radius: 38px; overflow: hidden; position: relative; flex: none;
-           box-shadow: 0 0 0 10px #0D0F13, 0 24px 60px rgba(17,22,31,.22); font-family: Roboto, Arial, sans-serif; }
-  .progress { position: absolute; top: 0; left: 0; right: 0; height: 4px; background: #E8EBF0; z-index: 3; display: none; }
-  .progress i { display: block; height: 100%; background: var(--primary); width: 0; transition: width .3s; }
-  .scr { position: absolute; inset: 0; display: none; flex-direction: column; padding: 30px 22px 22px; overflow-y: auto; }
-  .scr.on { display: flex; }
-  .scr h2 { font-size: 21px; font-weight: 500; margin: 0 0 10px; line-height: 1.25; }
-  .scr p { font-size: 14.5px; line-height: 1.55; margin: 0 0 10px; color: #262A31; }
-  .step { font-size: 11px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 6px; font-weight: 500; }
-  .fill { flex: 1; min-height: 12px; }
-  .big { width: 100%; padding: 13px; border-radius: 12px; border: 0; background: var(--primary); color: #fff; font-weight: 500; font-size: 15px; margin-top: 8px; cursor: pointer; }
-  .big.ghost { background: #fff; color: var(--primary); border: 1px solid var(--line); }
-  .big:disabled { opacity: .38; cursor: default; }
-  .opt { display: block; width: 100%; text-align: left; padding: 11px 12px; margin: 5px 0; border: 1px solid var(--line); border-radius: 10px;
-         background: #fff; font-size: 14px; cursor: pointer; line-height: 1.35; }
-  .opt.sel { border-color: var(--primary); background: var(--soft); }
-  .scale { display: flex; gap: 6px; } .scale .opt { text-align: center; margin: 0; padding: 11px 0; }
-  .ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 5px; }
-  .q { margin: 14px 0 4px; font-weight: 500; font-size: 14px; line-height: 1.4; }
-  .lock { padding: 0; background: radial-gradient(120% 80% at 50% 0%, #3A4A66 0%, #18202C 55%, #0E1218 100%); color: #fff; }
-  .lock .bar { display: flex; justify-content: space-between; padding: 14px 22px; font-size: 12px; font-weight: 500; }
-  .lock .clock { text-align: center; font-size: 70px; font-weight: 300; margin-top: 26px; letter-spacing: -1px; }
-  .lock .date { text-align: center; font-size: 14px; opacity: .8; }
-  .lock.alerting .clock, .lock.alerting .date { opacity: .45; }
-  .scrim { position: absolute; inset: 0; background: rgba(5,7,10,.55); }
-  .dialog { position: absolute; left: 20px; right: 20px; top: 190px; background: var(--dialog); color: #1B1C20; border-radius: 28px; padding: 22px 22px 8px;
-            box-shadow: 0 12px 30px rgba(0,0,0,.35); }
-  .dialog.pop { animation: pop .28s ease-out; }
+  /* ---------- Survey stage + phone ---------- */
+  .stage { display: grid; grid-template-columns: 380px 1fr; gap: 32px; align-items: start; }
+  .phone { position: relative; width: 360px; height: 740px; border-radius: 44px; background: #fff; overflow: hidden;
+           box-shadow: 0 0 0 10px #0B1220, 0 0 0 11px #334155, 0 24px 60px rgba(15,23,42,.25); font-family: Roboto, Arial, sans-serif; margin: 12px auto; }
+  .pbar { position: absolute; top: 0; left: 0; right: 0; height: 4px; background: #E2E8F0; z-index: 3; }
+  .pbar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width var(--t); }
+  .scr { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 34px 22px 22px; overflow-y: auto; }
+  .scr h2 { font-size: 21px; font-weight: 500; line-height: 1.25; margin: 0 0 10px; }
+  .scr p { font-size: 15px; line-height: 1.55; margin: 0 0 10px; color: #1E293B; }
+  .scr .step { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+  .scr .fill { flex: 1; min-height: 12px; }
+  .scr .q { font-size: 15px; font-weight: 500; margin: 16px 0 6px; line-height: 1.4; }
+  .bi { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; color: var(--muted) !important; font-size: 14px !important; }
+  .opt { display: block; width: 100%; text-align: left; min-height: 44px; padding: 10px 12px; margin: 6px 0; border: 1px solid var(--line2); border-radius: 10px;
+         background: #fff; font-size: 15px; line-height: 1.35; transition: border-color var(--t-fast), background var(--t-fast); }
+  .opt:hover { border-color: var(--ink2); }
+  .opt[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+  .likert { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .likert .opt { text-align: center; padding: 8px 0; margin: 0; font-weight: 500; }
+  .ends { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .big { width: 100%; min-height: 50px; border-radius: 999px; border: 0; background: var(--accent); color: #fff; font-size: 16px; font-weight: 500; margin-top: 10px; }
+  .big:disabled { background: #CBD5E1; cursor: not-allowed; }
+  .big.ghost { background: #fff; color: var(--ink); border: 1px solid var(--line2); }
+  .lock { padding: 0; color: #fff; background: radial-gradient(120% 80% at 50% 0%, #334155 0%, #0F172A 60%, #020617 100%); }
+  .lock .sbar { display: flex; justify-content: space-between; padding: 14px 24px; font-size: 12px; font-weight: 500; }
+  .lock .clock { text-align: center; font-size: 72px; font-weight: 300; margin-top: 30px; letter-spacing: -1px; }
+  .lock .date { text-align: center; font-size: 15px; opacity: .8; }
+  .scrim { position: absolute; inset: 0; background: rgba(2,6,23,.55); }
+  .dialog { position: absolute; left: 16px; right: 16px; top: 168px; background: #F1F5F9; color: #0F172A; border-radius: 22px; padding: 18px 18px 14px; box-shadow: 0 20px 50px rgba(0,0,0,.45); }
+  .dialog.pop { animation: pop .32s cubic-bezier(.2,.9,.3,1.2); }
   @keyframes pop { from { transform: translateY(14px) scale(.97); opacity: 0; } to { transform: none; opacity: 1; } }
-  @media (prefers-reduced-motion: reduce) { .dialog.pop { animation: none; } }
-  .dialog .head { display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 500; margin-bottom: 12px; }
-  .dialog .msg { font-size: 14.5px; line-height: 1.48; white-space: pre-wrap; }
-  .dialog .act { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
-  .dialog .ok { background: none; border: 0; color: var(--primary); font-weight: 500; padding: 10px 14px; cursor: pointer; font-size: 15px; }
-  .ring { height: 3px; background: #DCE0E7; border-radius: 2px; overflow: hidden; flex: 1; margin-right: 12px; }
-  .ring i { display: block; height: 100%; background: #9AA3B2; width: 100%; transition: width 1s linear; }
-  .simtag { position: absolute; bottom: 16px; left: 0; right: 0; text-align: center; font-size: 10.5px; color: #C9D0DB; opacity: .75; }
-  .mini { width: 100%; text-align: left; border: 1px solid var(--line); border-radius: 12px; padding: 11px; margin: 6px 0; font-size: 12.5px; line-height: 1.45;
-          background: var(--dialog); cursor: pointer; font-family: Roboto, Arial, sans-serif; }
-  .mini.sel { border: 2px solid var(--primary); padding: 10px; }
-  .mini b { display: block; font-size: 11px; color: var(--muted); font-weight: 500; margin-bottom: 3px; }
-  .soundbox { border-top: 1px solid var(--line); margin-top: 6px; padding-top: 10px; }
-  .soundbox .chk { font-size: 13.5px; margin: 5px 0; }
-  .notes { flex: 1; min-width: 260px; max-width: 420px; }
-  .notes .panel p { font-size: 13.5px; line-height: 1.55; margin: 0 0 8px; color: #2D323C; }
-  .kv { display: grid; grid-template-columns: 130px 1fr; gap: 6px 10px; font-size: 13px; }
-  .kv span:nth-child(odd) { color: var(--muted); }
+  .dialog .hd { display: flex; align-items: center; gap: 8px; font-weight: 500; font-size: 15px; }
+  .dialog .hd svg { width: 22px; height: 22px; stroke: #B91C1C; }
+  .dialog .sim { margin-left: auto; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; color: #B91C1C; border: 1.5px solid #B91C1C; border-radius: 4px; padding: 1px 6px; }
+  .dialog .msg { font-size: 15.5px; line-height: 1.5; margin: 10px 0 12px; }
+  .dialog .ok { display: block; width: 100%; min-height: 44px; border: 0; border-top: 1px solid #CBD5E1; background: none; color: var(--accent); font-weight: 500; font-size: 16px; padding-top: 10px; }
+  .ring { height: 3px; background: #CBD5E1; border-radius: 2px; overflow: hidden; margin-bottom: 4px; }
+  .ring i { display: block; height: 100%; width: 100%; background: #64748B; transition: width 1s linear; }
+  .mini { display: block; width: 100%; text-align: left; border: 1px solid var(--line2); border-radius: 12px; padding: 10px 12px; margin: 8px 0; background: #fff; font-size: 13.5px; line-height: 1.45; }
+  .mini b { display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+  .mini[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+  .side-notes .kv { display: grid; grid-template-columns: 150px 1fr; gap: 6px 12px; font-size: 14.5px; }
+  .side-notes .kv span:nth-child(odd) { color: var(--muted); }
 
   /* ---------- Gallery ---------- */
-  .gal { display: grid; grid-template-columns: 110px repeat(4, minmax(0, 1fr)); gap: 10px; align-items: start; }
-  .gal .ch { font-size: 12px; color: var(--muted); font-weight: 500; padding: 4px 2px; }
-  .gal .rh { font-size: 13px; font-weight: 600; padding-top: 12px; }
-  .card { background: var(--dialog); border: 1px solid var(--line); border-radius: 14px; padding: 12px; font-family: Roboto, Arial, sans-serif; }
-  .card .t { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; margin-bottom: 6px; }
-  .card .m { font-size: 12.5px; line-height: 1.45; color: #2B2D33; }
-  .card .pills { margin-top: 8px; } .card .pill { font-size: 10.5px; padding: 1px 6px; font-family: Inter, Arial, sans-serif; }
+  .gal { display: grid; grid-template-columns: 120px repeat(4, minmax(0, 1fr)); gap: 10px; align-items: stretch; }
+  .gal .ch { font-size: 13px; font-weight: 700; color: var(--muted); padding: 4px 2px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: var(--r); padding: 12px; font-family: Roboto, Arial, sans-serif; font-size: 13.5px; line-height: 1.45; }
+  .card .tags { margin-top: 10px; font-family: "Atkinson Hyperlegible", Arial, sans-serif; }
+  .card .tag { font-size: 11.5px; }
 
-  /* ---------- Chart (single series) ---------- */
-  .bars { display: grid; grid-template-columns: 190px 1fr 52px; gap: 10px 12px; align-items: center; font-size: 13px; }
-  .track { height: 16px; background: #F1F3F6; border-radius: 0 4px 4px 0; position: relative; cursor: default; }
-  .barfill { height: 100%; background: var(--primary); border-radius: 0 4px 4px 0; transition: width .4s; }
-  .bars .val { font-variant-numeric: tabular-nums; text-align: right; }
-  .tip { position: fixed; pointer-events: none; background: #12151B; color: #fff; font-size: 12px; padding: 6px 9px; border-radius: 6px; display: none; z-index: 30; }
-  .stat { display: flex; gap: 28px; flex-wrap: wrap; }
-  .stat div b { display: block; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .stat div span { font-size: 12px; color: var(--muted); }
+  /* ---------- Results ---------- */
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: var(--r); background: #fff; }
+  .stats div { padding: 14px 16px; border-right: 1px solid var(--line); }
+  .stats div:last-child { border-right: 0; }
+  .stats b { display: block; font-size: 26px; font-variant-numeric: tabular-nums; }
+  .stats span { font-size: 13.5px; color: var(--muted); }
+  .bars { display: grid; grid-template-columns: 170px 1fr 52px; gap: 8px 12px; align-items: center; font-size: 14.5px; }
+  .track { height: 14px; background: #F1F5F9; border-radius: 3px; overflow: hidden; }
+  .track i { display: block; height: 100%; background: var(--accent); border-radius: 0 3px 3px 0; transition: width .4s; }
+  .track i.alt { background: #64748B; }
 
-  @media (max-width: 860px) {
+  @media (max-width: 1000px) {
     .shell { grid-template-columns: 1fr; }
-    .side { position: fixed; top: auto; bottom: 0; left: 0; right: 0; height: auto; z-index: 20; padding: 0; flex-direction: row; }
-    .brand, .side .foot { display: none; }
-    .nav { margin: 0; flex-direction: row; width: 100%; }
-    .nav button { flex: 1; flex-direction: column; gap: 3px; font-size: 10.5px; padding: 9px 2px; border-radius: 0; justify-content: center; }
-    .content { padding: 18px 16px 90px; }
-    .grid2 { grid-template-columns: 1fr; }
-    .gal { grid-template-columns: 1fr; } .gal .ch { display: none; } .gal .card::before { content: attr(data-v); display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; font-family: Inter, Arial, sans-serif; }
-    .phone { width: 100%; max-width: 360px; }
-    .bars { grid-template-columns: 120px 1fr 44px; }
+    .side { position: sticky; z-index: 10; height: auto; padding: 10px 12px; flex-direction: row; align-items: center; gap: 12px; overflow-x: auto; }
+    .side .foot, .brand small { display: none; }
+    .nav { flex-direction: row; margin: 0; }
+    .nav button { white-space: nowrap; }
+    .nav button[aria-current="page"] { box-shadow: inset 0 -3px 0 #38BDF8; }
+    .content { padding: 22px 16px 48px; }
+    .stage, .cols { grid-template-columns: 1fr; }
+    .gal { grid-template-columns: 1fr 1fr; } .gal .ch { display: none; }
+    .stats { grid-template-columns: 1fr 1fr; } .stats div:nth-child(2) { border-right: 0; } .stats div:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+    .bars { grid-template-columns: 120px 1fr 46px; }
   }
+  @media (max-width: 420px) { .phone { width: 100%; max-width: 360px; height: 700px; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="ic-home" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="ic-phone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></symbol>
+  <symbol id="ic-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+  <symbol id="ic-pen" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13 7 4 4"/></symbol>
+  <symbol id="ic-check" viewBox="0 0 24 24"><path d="M9 11l2 2 4-4"/><circle cx="12" cy="12" r="9"/></symbol>
+  <symbol id="ic-star" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></symbol>
+  <symbol id="ic-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+  <symbol id="ic-warn" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
+  <symbol id="ic-arrow" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></symbol>
+  <symbol id="ic-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></symbol>
+  <symbol id="ic-down" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></symbol>
+</svg>
+<a class="sr" href="#main">Skip to content</a>
 <div class="shell">
   <aside class="side">
-    <div class="brand">Alert Simulator<small>Group Atlas · Prototype</small></div>
-    <nav class="nav" role="tablist">
-      <button role="tab" aria-selected="true" data-v="home"><svg viewBox="0 0 24 24"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</button>
-      <button role="tab" aria-selected="false" data-v="survey"><svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg>Survey</button>
-      <button role="tab" aria-selected="false" data-v="gallery"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Alerts</button>
-      <button role="tab" aria-selected="false" data-v="compose"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13 7 4 4"/></svg>Composer</button>
-      <button role="tab" aria-selected="false" data-v="check"><svg viewBox="0 0 24 24"><path d="M9 11l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>Checker</button>
-      <button role="tab" aria-selected="false" data-v="results"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Results</button>
+    <div class="brand">Alert Simulator<small>Group Atlas · PUP CCIS</small></div>
+    <nav class="nav" aria-label="Sections">
+      <button data-v="home" aria-current="page"><svg class="i"><use href="#ic-home"/></svg>Overview</button>
+      <button data-v="survey"><svg class="i"><use href="#ic-phone"/></svg>Survey</button>
+      <button data-v="alerts"><svg class="i"><use href="#ic-grid"/></svg>Alerts</button>
+      <button data-v="compose"><svg class="i"><use href="#ic-pen"/></svg>Composer</button>
+      <button data-v="check"><svg class="i"><use href="#ic-check"/></svg>Checker</button>
+      <button data-v="evaluate"><svg class="i"><use href="#ic-star"/></svg>Evaluate</button>
+      <button data-v="results"><svg class="i"><use href="#ic-chart"/></svg>Results</button>
     </nav>
-    <div class="foot">Research prototype. Alerts are simulated and not from any agency. Data stays in this browser.</div>
+    <div class="foot">Research prototype. All alerts are simulated and were not sent by any agency. Data stays in this browser.</div>
   </aside>
 
-  <main class="content">
-  <!-- ================= HOME ================= -->
-  <section class="view on" id="v-home">
-    <div class="hero">
-      <div class="kicker">FoR research prototype · Group Atlas · PUP CCIS</div>
-      <h1>Will Metro Manila Adults Act on the Alert?</h1>
-      <p>Our study tests whether the way an emergency alert is written changes how well people understand it and whether they would act on it. This site is a prototype of the system we'd use: a simulator that runs the survey, a composer that writes alerts, and a checker that finds missing parts.</p>
-    </div>
-    <div class="grid2">
-      <div class="panel">
-        <h3>The four alert versions</h3>
-        <div class="matrix">
-          <div class="h"></div><div class="h">Filipino</div><div class="h">English</div>
-          <div class="h">Typical<br><span class="meta">missing parts, like real alerts</span></div><div><b>A</b>Typical, Filipino</div><div><b>B</b>Typical, English</div>
-          <div class="h">Complete<br><span class="meta">all five parts</span></div><div><b>C</b>Complete, Filipino</div><div><b>D</b>Complete, English</div>
+  <main class="content" id="main">
+  <!-- ================= OVERVIEW ================= -->
+  <section class="view on" id="v-home" aria-labelledby="h-home">
+    <h1 id="h-home">Will Metro Manila Adults Act on the Alert?</h1>
+    <p class="lede">Prototype of the system for our study on whether message completeness and language change how well adults understand a phone emergency alert and whether they intend to act on it.</p>
+    <div class="cols">
+      <div>
+        <h2>Four alert versions</h2>
+        <div class="matrix" role="table" aria-label="Alert versions">
+          <div class="h" role="columnheader">Completeness</div><div class="h" role="columnheader">Filipino</div><div class="h" role="columnheader">English</div>
+          <div class="h" role="rowheader">Typical<br><span class="meta">no time, no guidance</span></div><div role="cell"><b>A</b></div><div role="cell"><b>B</b></div>
+          <div class="h" role="rowheader">Complete<br><span class="meta">all five elements</span></div><div role="cell"><b>C</b></div><div role="cell"><b>D</b></div>
         </div>
-        <p class="meta" style="margin-top:10px">Five parts of an alert: hazard, location, time, guidance (what to do), and source. Each version is written for four alert types: flood, extreme heat, earthquake, and air quality.</p>
+        <p class="meta">Five elements: hazard, location, time, guidance, and source. Each version is written for flood, extreme heat, earthquake, and air quality alerts.</p>
       </div>
-      <div class="panel">
-        <h3>What a respondent goes through</h3>
-        <ol class="flow">
-          <li>Consent and a quick 18+ and Metro Manila check</li>
-          <li>Gets one version (A to D), assigned in balanced blocks</li>
-          <li>Sees four alerts on a lock screen; each hides after OK or 30 seconds</li>
-          <li>Answers a comprehension check and how likely they'd act, after each alert</li>
-          <li>Picks which version of the flood alert they'd want to receive</li>
+      <div>
+        <h2>Respondent flow</h2>
+        <ol class="steps">
+          <li>Consent and screening (18 or older, Metro Manila)</li>
+          <li>Six-item profile, then random assignment to one version</li>
+          <li>Four alerts in random order, each on a lock screen for up to 30 seconds</li>
+          <li>After each alert: intention-to-act scale, then the comprehension test</li>
+          <li>Preference pick for each alert type, then debriefing</li>
         </ol>
       </div>
     </div>
-    <div class="panel">
-      <h3>Explore the prototype</h3>
-      <div class="links">
-        <button data-go="survey"><span><b>Try the survey</b><span class="d">Go through it as a respondent, on a phone frame</span></span><span class="arrow">›</span></button>
-        <button data-go="gallery"><span><b>See all 16 alerts</b><span class="d">Every alert type in every version, with missing parts marked</span></span><span class="arrow">›</span></button>
-        <button data-go="compose"><span><b>Write an alert</b><span class="d">The composer for disaster office staff, in Filipino and English</span></span><span class="arrow">›</span></button>
-        <button data-go="check"><span><b>Check an alert</b><span class="d">Paste any alert and see which of the five parts are missing</span></span><span class="arrow">›</span></button>
-        <button data-go="results"><span><b>View results</b><span class="d">What the researchers see: scores by version, effects, CSV export</span></span><span class="arrow">›</span></button>
+    <div class="sec">
+      <h2>Open a part of the system</h2>
+      <div class="go">
+        <button data-go="survey"><span><b>Survey</b><span class="d">Take the study as a respondent</span></span><svg class="i"><use href="#ic-arrow"/></svg></button>
+        <button data-go="alerts"><span><b>Alerts</b><span class="d">All 16 alerts, the element matrix, and the real alerts they are modeled on</span></span><svg class="i"><use href="#ic-arrow"/></svg></button>
+        <button data-go="compose"><span><b>Composer</b><span class="d">Write a complete alert in Filipino and English</span></span><svg class="i"><use href="#ic-arrow"/></svg></button>
+        <button data-go="check"><span><b>Checker</b><span class="d">Find missing elements in any alert</span></span><svg class="i"><use href="#ic-arrow"/></svg></button>
+        <button data-go="evaluate"><span><b>Evaluate</b><span class="d">ISO/IEC 25010 questionnaire for IT experts and DRRM staff</span></span><svg class="i"><use href="#ic-arrow"/></svg></button>
+        <button data-go="results"><span><b>Results</b><span class="d">Scores, preferences, evaluations, and CSV export</span></span><svg class="i"><use href="#ic-arrow"/></svg></button>
       </div>
     </div>
   </section>
 
   <!-- ================= SURVEY ================= -->
-  <section class="view" id="v-survey">
-    <h1>Survey</h1>
-    <p class="lede">The respondent view. Questions follow the language of the assigned alert, so Filipino-version respondents answer in Filipino.</p>
+  <section class="view" id="v-survey" aria-labelledby="h-survey">
+    <h1 id="h-survey">Survey</h1>
+    <p class="lede">The respondent view. After assignment, every page follows the language of the assigned version.</p>
     <div class="stage">
-      <div class="phone" id="phone">
-        <div class="progress" id="prog"><i></i></div>
-        <section class="scr on" id="s-consent">
-          <div class="step">Emergency Alert Study</div>
-          <h2>Before you start</h2>
-          <p>You will see four emergency alerts on a phone screen and answer a few questions after each one. It takes about 5 minutes.</p>
-          <p>The alerts are <b>simulated</b>. There is no real emergency. Your answers are anonymous: we don't ask for your name, email, or number. You can stop anytime.</p>
-          <p class="meta">Group Atlas, BSIT, Polytechnic University of the Philippines</p>
-          <div class="fill"></div>
-          <label class="chk"><input type="checkbox" id="agree"> I have read this and I agree to take part.</label>
-          <button class="big" id="b-consent" disabled>Continue</button>
-        </section>
-        <section class="scr" id="s-age">
-          <div class="step">Step 1</div>
-          <h2>Quick check</h2>
-          <p>Are you 18 years old or older, and do you live, work, or study in Metro Manila?</p>
-          <div class="fill"></div>
-          <button class="big" data-age="yes">Yes</button>
-          <button class="big ghost" data-age="no">No</button>
-        </section>
-        <section class="scr" id="s-exit"><h2>Thank you</h2><p>This study is only for adults aged 18 and above in Metro Manila, so you can't take part this time.</p><div class="fill"></div><button class="big ghost" data-restart>Back to start</button></section>
-        <section class="scr" id="s-brief">
-          <div class="step" id="br-step"></div>
-          <h2 id="br-title"></h2>
-          <p id="br-1"></p>
-          <p id="br-2"></p>
-          <div class="soundbox">
-            <p class="meta" id="o-warn"></p>
-            <label class="chk"><input type="checkbox" id="o-tone" checked> <span id="o-tone-l"></span></label>
-            <label class="chk"><input type="checkbox" id="o-voice"> <span id="o-voice-l"></span></label>
-            <button class="big ghost" id="b-test" style="margin-top:4px"></button>
-            <p class="meta" id="o-note" style="margin:6px 0 0"></p>
-          </div>
-          <div class="fill"></div>
-          <button class="big" id="b-brief"></button>
-        </section>
-        <section class="scr lock" id="s-alert">
-          <div class="bar"><span class="t-clock"></span><span>LTE ▮▮▮ 100%</span></div>
-          <div class="clock t-clock"></div>
-          <div class="date" id="a-date"></div>
-          <div class="scrim"></div>
-          <div class="dialog" id="a-dialog" role="alertdialog" aria-label="Emergency alert">
-            <div class="head"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 1 21h22L12 2z" fill="#C62828"/><rect x="11" y="9" width="2" height="6" fill="#fff"/><rect x="11" y="16.5" width="2" height="2" fill="#fff"/></svg>Emergency alert: Extreme</div>
-            <div class="msg" id="a-msg"></div>
-            <div class="act"><div class="ring" title="Time left"><i id="a-ring"></i></div><button class="ok" id="b-ok">OK</button></div>
-          </div>
-          <div class="simtag">Simulated alert for research. Not a real emergency.</div>
-        </section>
-        <section class="scr" id="s-q">
-          <div class="step" id="q-step"></div>
-          <h2 id="q-title"></h2>
-          <div id="q-body"></div>
-          <div class="fill"></div>
-          <button class="big" id="b-q" disabled></button>
-        </section>
-        <section class="scr" id="s-pref">
-          <div class="step" id="p-step"></div>
-          <h2 id="p-title"></h2>
-          <p class="meta" id="p-sub"></p>
-          <div id="pref"></div>
-          <button class="big" id="b-pref" disabled></button>
-        </section>
-        <section class="scr" id="s-done">
-          <div class="step">Done</div>
-          <h2 id="d-title"></h2>
-          <p id="d-1"></p>
-          <p class="meta" id="d-2"></p>
-          <div class="fill"></div>
-          <button class="big ghost" data-restart id="d-again"></button>
-        </section>
+      <div>
+        <div class="phone" id="phone" aria-live="polite"><div class="pbar"><i id="pb"></i></div><div id="scr"></div></div>
       </div>
-      <div class="notes">
-        <div class="panel">
-          <h3>Behind the scenes</h3>
-          <div class="kv" id="live">
-            <span>Respondent ID</span><span id="lv-id">–</span>
-            <span>Assigned version</span><span id="lv-ver">assigned after the age check</span>
-            <span>Alert</span><span id="lv-alert">–</span>
-            <span>Last viewing time</span><span id="lv-view">–</span>
-            <span>Sound</span><span id="lv-sound">–</span>
+      <div class="side-notes">
+        <h2>Behind the scenes</h2>
+        <div class="kv box" id="live"></div>
+        <div class="sec">
+          <h2>Settings</h2>
+          <label class="chk"><input type="checkbox" id="o-tone" checked> <span>Play an alert tone when each alert appears</span></label>
+          <div class="btns" style="margin-top:10px">
+            <button class="btn ghost" id="b-reset">Start a new respondent</button>
           </div>
-        </div>
-        <div class="panel">
-          <h3>Design notes</h3>
-          <p>The alert is hidden before the questions so people answer from memory, like after a real alert.</p>
-          <p>Answer options are shuffled so position doesn't hint at the right one. For typical alerts, the correct answer to "what to do" is that the alert didn't say.</p>
-          <p>An attention check appears after the second alert. Failed responses are flagged and left out of the results.</p>
+          <p class="meta">In the real study, a browser that already submitted cannot answer again. Use the button above to clear that marker for testing.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ================= GALLERY ================= -->
-  <section class="view" id="v-gallery">
-    <h1>All 16 alerts</h1>
-    <p class="lede">Four alert types in four versions. The tags under each alert show which of the five parts it has, found by the same checker in the Checker tab.</p>
-    <div class="panel" style="padding:12px 18px"><label class="chk" style="margin:0"><input type="checkbox" id="g-tags" checked> Show the five-part tags</label></div>
-    <div class="gal" id="gal"></div>
+  <!-- ================= ALERTS ================= -->
+  <section class="view" id="v-alerts" aria-labelledby="h-alerts">
+    <h1 id="h-alerts">Alerts</h1>
+    <p class="lede">All 16 simulated alerts. Each complete alert is the typical alert with the time and the guidance added; the sender is the same.</p>
+    <div id="gal" class="gal"></div>
+    <div class="sec">
+      <h2>Real alerts the typical versions are modeled on</h2>
+      <p class="meta">Table 1 of the paper: four NDRRMC rainfall alerts sent to Metro Manila in 2025 and 2026, checked with the same element checker.</p>
+      <div class="box" style="padding:0 6px"><table id="real"></table></div>
+    </div>
   </section>
 
   <!-- ================= COMPOSER ================= -->
-  <section class="view" id="v-compose">
-    <h1>Alert composer</h1>
-    <p class="lede">For disaster office staff. Fill in the five parts and the system writes a complete alert in Filipino and English, using the template the respondents chose. Drafts need approval before they're sent.</p>
-    <div class="row">
-      <div class="panel grow" style="max-width:440px">
-        <label class="f">Hazard</label><select id="c-hazard"></select>
-        <label class="f">Location</label><input type="text" id="c-loc" value="Metro Manila">
-        <div class="row" style="gap:10px">
-          <div class="grow" style="min-width:120px"><label class="f">From (optional)</label><input type="text" id="c-from" placeholder="e.g. 12NN"></div>
-          <div class="grow" style="min-width:120px"><label class="f">Until</label><input type="text" id="c-until" value="5:15PM"></div>
+  <section class="view" id="v-compose" aria-labelledby="h-compose">
+    <h1 id="h-compose">Composer</h1>
+    <p class="lede">For alert writers. Fill in the five elements and the composer writes a complete alert in Filipino and English.</p>
+    <div class="cols">
+      <form id="cform" onsubmit="return false">
+        <label class="f" for="c-haz">Alert type</label>
+        <select id="c-haz"></select>
+        <label class="f" for="c-level">Hazard <span>(level or magnitude)</span></label>
+        <input type="text" id="c-level">
+        <label class="f" for="c-loc">Location</label>
+        <input type="text" id="c-loc" value="Metro Manila">
+        <label class="f" for="c-time">Time <span>(how long the danger lasts)</span></label>
+        <input type="text" id="c-time">
+        <label class="f" for="c-guide">Guidance</label>
+        <select id="c-guide"></select>
+        <label class="f" for="c-src">Source</label>
+        <input type="text" id="c-src" value="NDRRMC">
+      </form>
+      <div>
+        <div id="c-rec"></div>
+        <div id="c-out"></div>
+        <div class="btns" style="margin-top:12px">
+          <button class="btn" id="c-approve">Approve draft</button>
+          <span id="c-status" class="tag">Draft</span>
         </div>
-        <label class="f">What people should do</label><div id="c-actions"></div>
-        <label class="f">Source</label>
-        <select id="c-src"><option>NDRRMC/PAGASA</option><option>NDRRMC/PHIVOLCS</option><option>NDRRMC/DENR-EMB</option><option>NDRRMC</option><option>City DRRMO</option></select>
-        <div style="margin-top:16px"><button class="btn" id="c-save">Save as draft</button></div>
-      </div>
-      <div class="grow">
-        <div class="panel">
-          <div class="row" style="justify-content:space-between;align-items:center;gap:10px">
-            <h3 style="margin:0">Preview</h3>
-            <div class="seg"><button class="on" data-lang="fil">Filipino</button><button data-lang="en">English</button></div>
-          </div>
-          <div class="card" style="margin-top:12px"><div class="t"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 1 21h22L12 2z" fill="#C62828"/></svg>Emergency alert: Extreme</div><div class="m" id="c-msg"></div></div>
-          <div class="meta" id="c-count" style="margin-top:10px"></div>
-          <div class="pills" id="c-checks" style="margin-top:8px"></div>
-          <div style="margin-top:12px"><button class="btn ghost sm" id="c-copy">Copy text</button> <button class="btn ghost sm" id="c-play">Play alert</button> <span class="meta" id="c-copied"></span></div>
-        </div>
-        <div class="panel">
-          <h3>Drafts</h3>
-          <table id="c-drafts"></table>
-        </div>
+        <p class="meta">The system never sends alerts. Approved text is copied by the writer into the official channel.</p>
       </div>
     </div>
   </section>
 
   <!-- ================= CHECKER ================= -->
-  <section class="view" id="v-check">
-    <h1>Completeness checker</h1>
-    <p class="lede">Paste any alert and the system flags which of the five parts are missing, using keyword lists in Filipino and English. In the study, its accuracy would be measured against alerts labeled by the DRRM validator.</p>
-    <div class="panel">
-      <div class="row" style="gap:8px;margin-bottom:10px;align-items:center">
-        <span class="meta">Try:</span>
-        <button class="btn ghost sm" data-sample="real">Real NDRRMC alert (Oct 2024)</button>
-        <button class="btn ghost sm" data-sample="0">Typical flood, Filipino</button>
-        <button class="btn ghost sm" data-sample="3">Complete flood, English</button>
-      </div>
-      <textarea id="k-text" placeholder="Paste an alert here"></textarea>
-      <div id="k-result" style="margin-top:12px"></div>
-      <div class="meta" id="k-high" style="margin-top:8px;line-height:1.8"></div>
+  <section class="view" id="v-check" aria-labelledby="h-check">
+    <h1 id="h-check">Checker</h1>
+    <p class="lede">Paste any alert to see which of the five elements it has. The send time in parentheses does not count as the time element.</p>
+    <label class="f" for="k-text">Alert text</label>
+    <textarea id="k-text" placeholder="Paste an alert here"></textarea>
+    <div class="btns" style="margin-top:10px">
+      <button class="btn ghost" data-sample="0">Real alert, Aug 2026</button>
+      <button class="btn ghost" data-sample="1">Complete flood, English</button>
+      <button class="btn ghost" data-sample="2">Typical heat, Filipino</button>
     </div>
+    <div id="k-out" class="sec" aria-live="polite"></div>
+  </section>
+
+  <!-- ================= EVALUATE ================= -->
+  <section class="view" id="v-evaluate" aria-labelledby="h-evaluate">
+    <h1 id="h-evaluate">Evaluate</h1>
+    <p class="lede">System evaluation questionnaire based on ISO/IEC 25010. Answered by IT experts and DRRM staff after using the simulator and the composer.</p>
+    <form id="eform" onsubmit="return false">
+      <div class="cols">
+        <div><label class="f" for="e-role">Evaluator group</label>
+          <select id="e-role"><option value="">Choose one</option><option>IT expert</option><option>DRRM staff</option></select></div>
+        <div><label class="f" for="e-yrs">Years of experience</label><input type="text" id="e-yrs" inputmode="numeric"></div>
+      </div>
+      <p class="meta" style="margin-top:16px">1 = Strongly Disagree, 2 = Disagree, 3 = Neutral, 4 = Agree, 5 = Strongly Agree</p>
+      <div id="e-items"></div>
+      <p id="e-err" class="meta" style="color:var(--bad)" role="alert"></p>
+      <button class="btn" id="e-submit">Submit evaluation</button>
+    </form>
   </section>
 
   <!-- ================= RESULTS ================= -->
-  <section class="view" id="v-results">
-    <h1>Results</h1>
-    <p class="lede">What the researchers see. Scores are computed automatically. The real analysis is a two-way ANOVA in JASP or jamovi, using the exported CSV.</p>
-    <div class="panel">
-      <div class="row" style="gap:8px;align-items:center">
-        <button class="btn" id="r-demo">Add 20 demo responses</button>
-        <button class="btn ghost" id="r-csv">Export CSV</button>
-        <button class="btn ghost" id="r-clear">Clear all</button>
-      </div>
-      <p class="meta" style="margin:10px 0 0">Demo responses are made up so the screens aren't empty. They are not real results.</p>
+  <section class="view" id="v-results" aria-labelledby="h-results">
+    <h1 id="h-results">Results</h1>
+    <p class="lede">What the researchers see. The hypothesis tests are run in JASP from the exported CSV; this page shows the descriptive results.</p>
+    <div class="btns">
+      <button class="btn ghost" id="r-demo">Add 40 demo respondents</button>
+      <button class="btn ghost" id="r-csv"><svg class="i"><use href="#ic-down"/></svg>Responses CSV</button>
+      <button class="btn ghost" id="r-ecsv"><svg class="i"><use href="#ic-down"/></svg>Evaluations CSV</button>
+      <button class="btn danger" id="r-clear">Clear all data</button>
     </div>
-    <div class="panel"><div class="stat" id="r-stats"></div></div>
-    <div class="panel">
-      <h3>Mean comprehension by version <span class="meta" style="font-weight:400">(0 to 2 per alert, averaged across the four alert types)</span></h3>
-      <div class="bars" id="r-chart"></div>
-    </div>
-    <div class="grid2">
-      <div class="panel"><h3>Effect preview</h3><table id="r-effects"></table><p class="meta" style="margin:10px 0 0">Averages for each variable on its own. Whether a difference is significant is decided by the two-way ANOVA, not this table.</p></div>
-      <div class="panel"><h3>Preferred flood alert</h3><table id="r-pref"></table></div>
-    </div>
-    <div class="panel"><h3>Comprehension by alert type</h3><table id="r-haz"></table></div>
-    <div class="panel"><h3>Latest responses</h3><table id="r-raw"></table></div>
+    <p class="meta">Demo respondents are made up so the tables are not empty. They are not results.</p>
+    <div id="r-body"></div>
   </section>
   </main>
 </div>
-<div class="tip" id="tip"></div>
+<div class="toast" id="toast" role="status"></div>
 
 <script>
-// ===================== Data =====================
-const V = ["A", "B", "C", "D"];
-const V_LABEL = { A: "A · Typical, Filipino", B: "B · Typical, English", C: "C · Complete, Filipino", D: "D · Complete, English" };
-const isFil = v => v === 0 || v === 2;
+"use strict";
+// ===================== Study data (matches the paper) =====================
+const V = ["A", "B", "C", "D"];                        // A typical-FIL, B typical-EN, C complete-FIL, D complete-EN
+const isFil = v => v === 0 || v === 2, isComplete = v => v >= 2;
+const VLABEL = ["A · Typical, Filipino", "B · Typical, English", "C · Complete, Filipino", "D · Complete, English"];
+const ELEMENTS = ["hazard", "location", "time", "guidance", "source"];
+
 const HAZ = [
   { id: "flood", name: "Flood", clock: "2:16", date: "Tuesday, July 21", v: [
     "NDRRMC (2:15PM, 21Jul26) Red Rainfall Warning sa Metro Manila. Asahan ang matinding pag-ulan, pagbaha at pagguho ng lupa.",
     "NDRRMC (2:15PM, 21Jul26) Red Rainfall Warning in Metro Manila. Expect heavy rain, flooding, and landslides.",
-    "NDRRMC/PAGASA (2:15PM, 21Jul26): Red Rainfall Warning sa Metro Manila hanggang 5:15PM. Malubhang pagbaha sa mabababang lugar. Lumikas na kung nakatira sa tabi ng ilog o estero, at huwag lumusong sa baha.",
-    "NDRRMC/PAGASA (2:15PM, 21Jul26): Red Rainfall Warning in Metro Manila until 5:15PM. Serious flooding in low-lying areas. Evacuate now if you live near a river or creek, and do not wade through floodwater."],
-    q1: { en: ["Heavy rain and flooding", "Strong winds", "Extreme heat"], fil: ["Malakas na ulan at pagbaha", "Malakas na hangin", "Matinding init"] },
-    q2: { en: ["Evacuate if you live near a river or creek, and avoid floodwater", "Stay home and charge your phone"], fil: ["Lumikas kung nakatira sa tabi ng ilog o estero, at iwasan ang baha", "Manatili sa bahay at i-charge ang cellphone"] } },
+    "NDRRMC (2:15PM, 21Jul26) Red Rainfall Warning sa Metro Manila hanggang 5:15PM. Asahan ang matinding pag-ulan, pagbaha at pagguho ng lupa. Lumikas na kung nakatira sa tabi ng ilog o estero, at huwag lumusong sa baha.",
+    "NDRRMC (2:15PM, 21Jul26) Red Rainfall Warning in Metro Manila until 5:15PM. Expect heavy rain, flooding, and landslides. Evacuate now if you live near a river or creek, and do not wade through floodwater."],
+    items: [
+      { en: ["Heavy rain, flooding, and landslides", "Strong winds and storm surge", "A dam water release"], fil: ["Matinding pag-ulan, pagbaha, at pagguho ng lupa", "Malakas na hangin at storm surge", "Pagpapakawala ng tubig mula sa dam"] },
+      { en: ["Metro Manila", "Bulacan and Pampanga", "Cavite and Laguna"], fil: ["Metro Manila", "Bulacan at Pampanga", "Cavite at Laguna"] },
+      { en: ["Until 5:15PM", "Until midnight", "Until tomorrow morning"], fil: ["Hanggang 5:15PM", "Hanggang hatinggabi", "Hanggang bukas ng umaga"] },
+      { en: ["Evacuate if you live near a river or creek, and do not wade through floodwater", "Charge your phone and wait for updates", "Move your car to higher ground"],
+        fil: ["Lumikas kung nakatira sa tabi ng ilog o estero, at huwag lumusong sa baha", "I-charge ang cellphone at maghintay ng balita", "Ilipat ang sasakyan sa mataas na lugar"] },
+      { en: ["NDRRMC", "PAGASA", "MMDA"], fil: ["NDRRMC", "PAGASA", "MMDA"] } ] },
   { id: "heat", name: "Extreme heat", clock: "11:01", date: "Wednesday, April 15", v: [
-    "NDRRMC (11:00AM, 15Apr26) Heat Index Warning: 'Danger' na antas ng init (42-51°C) sa Metro Manila ngayong araw.",
-    "NDRRMC (11:00AM, 15Apr26) Heat Index Warning: 'Danger' level heat (42-51°C) in Metro Manila today.",
-    "NDRRMC/PAGASA (11:00AM, 15Apr26): Mapanganib na init sa Metro Manila mula 12NN hanggang 4PM (heat index 42-51°C). Maaaring magka-heat stroke. Manatili sa lilim o sa loob ng bahay, uminom ng maraming tubig, at iwasan ang mabibigat na gawain sa labas.",
-    "NDRRMC/PAGASA (11:00AM, 15Apr26): Dangerous heat in Metro Manila from 12NN to 4PM (heat index 42-51°C). Heat stroke is possible. Stay in the shade or indoors, drink plenty of water, and avoid heavy work outside."],
-    q1: { en: ["Dangerous heat", "Air pollution", "A power outage"], fil: ["Mapanganib na init", "Polusyon sa hangin", "Brownout"] },
-    q2: { en: ["Stay in the shade or indoors and drink plenty of water", "Go to the nearest evacuation center"], fil: ["Manatili sa lilim o sa loob ng bahay at uminom ng maraming tubig", "Pumunta sa pinakamalapit na evacuation center"] } },
+    "NDRRMC (11:00AM, 15Apr26) Heat Index Warning: 'Danger' na antas ng init (42–51°C) sa Metro Manila.",
+    "NDRRMC (11:00AM, 15Apr26) Heat Index Warning: 'Danger' level heat (42–51°C) in Metro Manila.",
+    "NDRRMC (11:00AM, 15Apr26) Heat Index Warning: 'Danger' na antas ng init (42–51°C) sa Metro Manila mula 12NN hanggang 4PM. Manatili sa lilim o sa loob ng bahay, uminom ng maraming tubig, at iwasan ang mabibigat na gawain sa labas.",
+    "NDRRMC (11:00AM, 15Apr26) Heat Index Warning: 'Danger' level heat (42–51°C) in Metro Manila from 12NN to 4PM. Stay in the shade or indoors, drink plenty of water, and avoid heavy work outside."],
+    items: [
+      { en: ["Dangerous heat (heat index 42–51°C)", "Unhealthy air (smog)", "Rotating power outages"], fil: ["Mapanganib na init (heat index 42–51°C)", "Hindi ligtas na hangin (smog)", "Rotational brownout"] },
+      { en: ["Metro Manila", "Bulacan and Pampanga", "Cavite and Laguna"], fil: ["Metro Manila", "Bulacan at Pampanga", "Cavite at Laguna"] },
+      { en: ["From 12NN to 4PM", "Until 8PM tonight", "For the next three days"], fil: ["Mula 12NN hanggang 4PM", "Hanggang 8PM mamayang gabi", "Sa susunod na tatlong araw"] },
+      { en: ["Stay in the shade or indoors, drink plenty of water, and avoid heavy work outside", "Go to the nearest evacuation center", "Turn off all appliances to save power"],
+        fil: ["Manatili sa lilim o sa loob ng bahay, uminom ng maraming tubig, at iwasan ang mabibigat na gawain sa labas", "Pumunta sa pinakamalapit na evacuation center", "Patayin ang lahat ng appliances para makatipid sa kuryente"] },
+      { en: ["NDRRMC", "PAGASA", "MMDA"], fil: ["NDRRMC", "PAGASA", "MMDA"] } ] },
   { id: "quake", name: "Earthquake", clock: "9:06", date: "Tuesday, March 3", v: [
     "NDRRMC (9:05AM, 03Mar26) Magnitude 6.8 na lindol, naramdaman sa Metro Manila.",
     "NDRRMC (9:05AM, 03Mar26) Magnitude 6.8 earthquake felt in Metro Manila.",
-    "NDRRMC/PHIVOLCS (9:05AM, 03Mar26): Malakas na lindol (Magnitude 6.8) sa Metro Manila. Asahan ang aftershocks sa susunod na mga oras. Kung nasa loob: Dapa, Takip, Kapit. Pagtigil ng pagyanig, pumunta sa bukas na lugar na malayo sa gusali at poste.",
-    "NDRRMC/PHIVOLCS (9:05AM, 03Mar26): Strong earthquake (Magnitude 6.8) in Metro Manila. Expect aftershocks in the next few hours. If indoors: Drop, Cover, and Hold On. When the shaking stops, go to an open area away from buildings and posts."],
-    q1: { en: ["An earthquake", "A tsunami", "A fire"], fil: ["Lindol", "Tsunami", "Sunog"] },
-    q2: { en: ["Drop, cover, and hold on, then go to an open area", "Stay near windows to see what happened"], fil: ["Dapa, Takip, Kapit, at pumunta sa bukas na lugar", "Lumapit sa bintana para makita ang nangyari"] } },
+    "NDRRMC (9:05AM, 03Mar26) Magnitude 6.8 na lindol, naramdaman sa Metro Manila. Asahan ang aftershocks sa susunod na 24 oras. Kung nasa loob: Dapa, Takip, Kapit. Pagtigil ng pagyanig, pumunta sa bukas na lugar na malayo sa gusali at poste.",
+    "NDRRMC (9:05AM, 03Mar26) Magnitude 6.8 earthquake felt in Metro Manila. Expect aftershocks in the next 24 hours. If indoors: Drop, Cover, and Hold On. When the shaking stops, go to an open area away from buildings and posts."],
+    items: [
+      { en: ["A magnitude 6.8 earthquake", "A tsunami warning", "A magnitude 4.2 earthquake"], fil: ["Magnitude 6.8 na lindol", "Babala ng tsunami", "Magnitude 4.2 na lindol"] },
+      { en: ["Metro Manila", "Bulacan and Pampanga", "Cavite and Laguna"], fil: ["Metro Manila", "Bulacan at Pampanga", "Cavite at Laguna"] },
+      { en: ["For the next 24 hours", "For the next 30 minutes", "Until 12NN"], fil: ["Sa susunod na 24 oras", "Sa susunod na 30 minuto", "Hanggang 12NN"] },
+      { en: ["Drop, cover, and hold on, then go to an open area away from buildings and posts", "Stay inside and wait for the next advisory", "Move away from the coast to higher ground"],
+        fil: ["Dapa, Takip, Kapit, pagkatapos ay pumunta sa bukas na lugar na malayo sa gusali at poste", "Manatili sa loob at hintayin ang susunod na abiso", "Lumayo sa baybayin at pumunta sa mataas na lugar"] },
+      { en: ["NDRRMC", "PAGASA", "MMDA"], fil: ["NDRRMC", "PAGASA", "MMDA"] } ] },
   { id: "air", name: "Air quality", clock: "7:31", date: "Monday, January 12", v: [
-    "NDRRMC (7:30AM, 12Jan26) Mataas na antas ng smog sa Metro Manila ngayong araw.",
-    "NDRRMC (7:30AM, 12Jan26) High smog levels in Metro Manila today.",
-    "NDRRMC/DENR-EMB (7:30AM, 12Jan26): Hindi ligtas ang hangin (smog) sa Metro Manila hanggang 6PM ngayong araw. Mas delikado sa may hika, bata, at matatanda. Magsuot ng face mask sa labas, isara ang mga bintana, at iwasang mag-ehersisyo sa labas.",
-    "NDRRMC/DENR-EMB (7:30AM, 12Jan26): Unhealthy air (smog) in Metro Manila until 6PM today. Most dangerous for people with asthma, children, and older adults. Wear a face mask outside, close windows, and avoid exercising outdoors."],
-    q1: { en: ["Unhealthy air (smog)", "Heavy rain", "Volcanic ash"], fil: ["Hindi ligtas na hangin (smog)", "Malakas na ulan", "Abo mula sa bulkan"] },
-    q2: { en: ["Wear a face mask, close windows, and avoid exercising outside", "Evacuate to a higher place"], fil: ["Magsuot ng face mask, isara ang mga bintana, at iwasang mag-ehersisyo sa labas", "Lumikas sa mataas na lugar"] } },
+    "NDRRMC (7:30AM, 12Jan26) Mataas na antas ng smog sa Metro Manila.",
+    "NDRRMC (7:30AM, 12Jan26) High smog levels in Metro Manila.",
+    "NDRRMC (7:30AM, 12Jan26) Mataas na antas ng smog sa Metro Manila hanggang 6PM. Magsuot ng face mask sa labas, isara ang mga bintana, at iwasang mag-ehersisyo sa labas.",
+    "NDRRMC (7:30AM, 12Jan26) High smog levels in Metro Manila until 6PM. Wear a face mask outside, close windows, and avoid exercising outdoors."],
+    items: [
+      { en: ["High smog levels", "Volcanic ash fall", "Heavy rain"], fil: ["Mataas na antas ng smog", "Pagbagsak ng abo mula sa bulkan", "Malakas na ulan"] },
+      { en: ["Metro Manila", "Bulacan and Pampanga", "Cavite and Laguna"], fil: ["Metro Manila", "Bulacan at Pampanga", "Cavite at Laguna"] },
+      { en: ["Until 6PM", "Until 12NN", "For the next three days"], fil: ["Hanggang 6PM", "Hanggang 12NN", "Sa susunod na tatlong araw"] },
+      { en: ["Wear a face mask outside, close windows, and avoid exercising outdoors", "Go to the nearest evacuation center", "Open the windows to let fresh air in"],
+        fil: ["Magsuot ng face mask sa labas, isara ang mga bintana, at iwasang mag-ehersisyo sa labas", "Pumunta sa pinakamalapit na evacuation center", "Buksan ang mga bintana para pumasok ang sariwang hangin"] },
+      { en: ["NDRRMC", "PAGASA", "MMDA"], fil: ["NDRRMC", "PAGASA", "MMDA"] } ] },
 ];
-// Survey text in both languages; questions follow the assigned alert's language
+
+const REAL = [
+  { text: "NDRRMC: (2:14AM,10Nov25) Orange Rainfall Warning sa Rizal, Laguna, Cavite at Metro Manila. Nagbabanta ang matinding pag-ulan, pagbaha at pagguho ng lupa.", src: "DRPS PHCA (2025), Threads" },
+  { text: "NDRRMC(4PM,10Jul26) Orange Rainfall Warning sa Metro Manila. Nagbabanta ang matinding pag-ulan, pagbaha at pagguho ng lupa.", src: "NDRRMC (2026), X" },
+  { text: "NDRRMC: (12:35PM,10Aug26) Orange Rainfall Warning sa Metro Manila, Rizal, at Cavite. Nagbabanta ang matinding pag-ulan, pagbaha at pagguho ng lupa.", src: "Malasig (2026), Interaksyon" },
+  { text: "NDRRMC: (5:12PM,10Aug26) Red Rainfall Warning sa Bulacan, Metro Manila at Rizal. Asahan ang matinding pag-ulan, pagbaha at pagguho ng lupa.", src: "Malasig (2026), Interaksyon" },
+];
+
+// Survey text. Parts I and II are bilingual (before assignment); later parts follow the assigned language.
 const T = {
-  en: { step: "Step 2", brief: "How this works", b1: "An alert will pop up on a phone screen. Read it as if you just received it on your own phone.",
-        b2: "It disappears when you tap OK or after 30 seconds, and you can't go back to it.", start: "Show the first alert",
-        qStep: (i, n) => `Alert ${i} of ${n}`, qTitle: "About the alert you just saw", q1: "What is the alert about?", q2: "What does the alert tell you to do?",
-        notSaid: "The alert did not say what to do", q3: "If you got this alert right now, how likely are you to do what it asks?",
-        lo: "Not likely", hi: "Very likely", att: "To show you're reading carefully, please select \"Agree\" for this item.", attO: ["Disagree", "Neutral", "Agree"],
-        next: "Next", pStep: "Last step", pTitle: "Which alert would you want to get?", pSub: "Four versions of the same flood alert. Pick one.", opt: "Option", submit: "Submit",
-        dTitle: "Thank you!", d1: "All the alerts you saw were made up for this study. In a real emergency, follow NDRRMC and your local disaster office.",
-        d2: "Your response was saved. See it in the Results tab.", again: "Start a new respondent",
-        warn: "Each alert plays a loud alert sound, like a real one. Turn your volume to a comfortable level first.",
-        toneL: "Alert sound", voiceL: "Read the alert aloud (experimental)", test: "Test sound",
-        testLine: "This is a test of the alert sound.", noVoice: "No Filipino voice on this device, so alerts won't be read aloud." },
-  fil: { step: "Hakbang 2", brief: "Paano ito gagawin", b1: "May lalabas na alert sa screen ng cellphone. Basahin ito na parang natanggap mo mismo sa sarili mong cellphone.",
-        b2: "Mawawala ito kapag pinindot mo ang OK o pagkalipas ng 30 segundo, at hindi mo na ito mababalikan.", start: "Ipakita ang unang alert",
-        qStep: (i, n) => `Alert ${i} sa ${n}`, qTitle: "Tungkol sa alert na nakita mo", q1: "Tungkol saan ang alert?", q2: "Ano ang sinasabi ng alert na gawin mo?",
-        notSaid: "Walang sinabi ang alert kung ano ang gagawin", q3: "Kung natanggap mo ang alert na ito ngayon, gaano ka kalamang na sundin ito?",
-        lo: "Hindi malamang", hi: "Siguradong susundin", att: "Para ipakitang maingat kang nagbabasa, piliin ang \"Sang-ayon\".", attO: ["Hindi sang-ayon", "Neutral", "Sang-ayon"],
-        next: "Susunod", pStep: "Huling hakbang", pTitle: "Aling alert ang gusto mong matanggap?", pSub: "Apat na bersyon ng iisang flood alert. Pumili ng isa.", opt: "Opsyon", submit: "Isumite",
-        dTitle: "Salamat!", d1: "Gawa-gawa lamang ang lahat ng alert para sa pag-aaral na ito. Sa totoong emergency, sundin ang NDRRMC at ang inyong lokal na disaster office.",
-        d2: "Na-save ang sagot mo. Makikita ito sa Results tab.", again: "Bagong respondent",
-        warn: "May malakas na tunog ang bawat alert, gaya ng totoong alert. Ayusin muna ang volume sa komportableng lakas.",
-        toneL: "Tunog ng alert", voiceL: "Basahin nang malakas ang alert (experimental)", test: "Subukan ang tunog",
-        testLine: "Ito ay pagsubok sa tunog ng alert.", noVoice: "Walang Filipino na boses sa device na ito, kaya hindi babasahin nang malakas ang alerts." },
-};
-const SHOW_SECONDS = 30;
+  en: { brief: "How this works", b1: "An emergency alert will pop up on a phone screen. Read it as if you just got it on your own phone.",
+        b2: "It closes when you tap OK or after 30 seconds, and you can't open it again.", start: "Show the first alert",
+        step: (i, n) => `Alert ${i} of ${n}`, intentT: "If you got this alert right now, how much do you agree?",
+        intent: ["I would take action to protect myself after reading this alert.", "I would act on this alert right away.",
+                 "I would stop or change what I am doing because of this alert.", "I would tell the people with me to take action because of this alert."],
+        scale: ["Strongly disagree", "Strongly agree"], att: "To show you are reading carefully, please select 5 (Strongly agree) for this item.",
+        compT: "About the alert you just saw", stems: ["According to the alert, what is the hazard?", "According to the alert, which area is affected?",
+        "According to the alert, how long does the danger last?", "According to the alert, what should you do?", "According to the alert, who sent the alert?"],
+        notSaid: "The alert did not say", next: "Next", prefStep: "Last part", prefT: n => `Which ${n} alert would you most want to receive?`,
+        opt: "Option", prefNext: "Next", submit: "Submit", doneT: "Thank you!",
+        done1: "All the alerts you saw were made up for this study and did not come from any agency. In a real emergency, follow official advisories from the NDRRMC and your local DRRM office.",
+        done2: "Your response was saved." },
+  fil: { brief: "Paano ito gagawin", b1: "May lalabas na emergency alert sa screen ng cellphone. Basahin ito na parang natanggap mo sa sarili mong cellphone.",
+        b2: "Magsasara ito kapag pinindot mo ang OK o pagkalipas ng 30 segundo, at hindi mo na ito mabubuksan ulit.", start: "Ipakita ang unang alert",
+        step: (i, n) => `Alert ${i} sa ${n}`, intentT: "Kung natanggap mo ang alert na ito ngayon, gaano ka sumasang-ayon?",
+        intent: ["Kikilos ako para protektahan ang sarili ko pagkabasa ng alert na ito.", "Kikilos ako agad batay sa alert na ito.",
+                 "Ititigil o babaguhin ko ang ginagawa ko dahil sa alert na ito.", "Sasabihan ko ang mga kasama ko na kumilos dahil sa alert na ito."],
+        scale: ["Lubos na hindi sang-ayon", "Lubos na sang-ayon"], att: "Para ipakitang maingat kang nagbabasa, piliin ang 5 (Lubos na sang-ayon) dito.",
+        compT: "Tungkol sa alert na nakita mo", stems: ["Ayon sa alert, ano ang panganib?", "Ayon sa alert, aling lugar ang apektado?",
+        "Ayon sa alert, gaano katagal ang panganib?", "Ayon sa alert, ano ang dapat mong gawin?", "Ayon sa alert, sino ang nagpadala nito?"],
+        notSaid: "Walang sinabi ang alert", next: "Susunod", prefStep: "Huling bahagi", prefT: n => `Aling ${n} alert ang pinakagusto mong matanggap?`,
+        opt: "Opsyon", prefNext: "Susunod", submit: "Isumite", doneT: "Salamat!",
+        done1: "Gawa-gawa lamang ang lahat ng alert para sa pag-aaral na ito at hindi galing sa anumang ahensya. Sa totoong emergency, sundin ang opisyal na abiso ng NDRRMC at ng inyong lokal na DRRM office.",
+        done2: "Na-save ang sagot mo." } };
+const HAZ_FIL = { flood: "flood", heat: "extreme heat", quake: "lindol", air: "air quality" };
+
+const ISO = [
+  ["Functional suitability", "The system has the functions needed to run the alert experiment and to write alerts.", "The system gives correct results, such as correct scores and complete alerts."],
+  ["Performance efficiency", "Pages and alerts load quickly.", "The system runs smoothly on a phone with a normal internet connection."],
+  ["Compatibility", "The system works on different browsers and devices.", "The exported data can be opened in other software such as Google Sheets and JASP."],
+  ["Interaction capability", "The system is easy to learn and use.", "The text, screens, and buttons are clear and easy to read."],
+  ["Reliability", "The system runs without errors or crashes.", "Responses are saved completely and correctly."],
+  ["Security", "Only the researchers can access the saved responses.", "The system does not collect information that can identify a respondent."],
+  ["Maintainability", "The alert texts and questions can be changed easily.", "The system is organized so that problems can be found and fixed easily."],
+  ["Flexibility", "The system can be adapted to other alert types or languages.", "The system adjusts to different screen sizes."],
+  ["Safety", "The system clearly states that the alerts are simulated and not real.", "The system never sends alerts to real phones or to the public."],
+];
+const SCALE = [[4.21, "Very High", "Strongly Agree"], [3.41, "High", "Agree"], [2.61, "Moderate", "Neutral"], [1.81, "Low", "Disagree"], [1, "Very Low", "Strongly Disagree"]];
+const interp = (m, col) => isNaN(m) ? "–" : SCALE.find(s => m >= s[0])[col];
+
+// ===================== Helpers =====================
 const $ = id => document.getElementById(id);
-const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const shuffle = a => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+const mean = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : NaN;
+const sd = a => { if (a.length < 2) return NaN; const m = mean(a); return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1)); };
+const f2 = x => isNaN(x) ? "–" : x.toFixed(2);
+const MEM = {};   // fallback when storage is blocked
+function load(k, fb) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? (k in MEM ? MEM[k] : fb); } catch (e) { return k in MEM ? MEM[k] : fb; } }
+function save(k, v) { MEM[k] = v; try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove("on"), 2200); }
 
-// ===================== Storage =====================
-const MEM = {}; // fallback when the browser blocks storage
-function load(key, fb) { try { const v = JSON.parse(localStorage.getItem(key)); return v ?? (key in MEM ? MEM[key] : fb); } catch (e) { return key in MEM ? MEM[key] : fb; } }
-function save(key, val) { MEM[key] = val; try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
-
-// Balanced block randomization: shuffle A-D in blocks of four.
-// shortcut: runs in this browser; the real system assigns on the server with a lock so simultaneous respondents can't unbalance groups.
-function nextVersion() {
-  let block = load("atlas-block", []);
-  if (!block.length) block = shuffle([0, 1, 2, 3]);
-  const v = block.shift(); save("atlas-block", block); return v;
+// ===================== Element checker =====================
+// shortcut: keyword rules, good enough for a prototype; the real composer validates fields directly instead of parsing text.
+const RULES = {
+  hazard: /rain|flood|baha|ulan|heat|init|lindol|earthquake|magnitude|smog|haze|tsunami|bagyo|typhoon|signal|landslide|pagguho|storm|ashfall|abo/i,
+  location: /metro manila|ncr|manila|quezon|makati|pasig|marikina|taguig|rizal|cavite|laguna|bulacan|batangas|low-lying|mabababang/i,
+  time: /\b(until|hanggang|mula|from)\b|next \d+ (hours?|minutes?)|susunod na \d+ (oras|minuto)|\d{1,2}(:\d\d)?\s?(am|pm|nn)\s*(to|-|–)/i,
+  guidance: /\b(evacuate|lumikas|stay|manatili|wear|magsuot|drop|dapa|avoid|iwasan|iwasang|go to|pumunta|close|isara|drink|uminom|huwag|do not|don't|move|lumayo)\b/i,
+  source: /ndrrmc|pagasa|phivolcs|denr|emb|ocd|lgu|mmda/i };
+function checkAlert(text) {
+  const noStamp = text.replace(/\([^)]*\)/g, " ");   // the send time is not the time element
+  const r = {}; ELEMENTS.forEach(e => r[e] = RULES[e].test(e === "time" ? noStamp : text)); return r;
 }
-
-// ===================== Sound =====================
-// Alert tone modeled on the US Wireless Emergency Alert attention signal: 853 Hz + 960 Hz together,
-// one 2 s tone then two 1 s tones with 0.5 s gaps. Browsers only allow audio after a tap, which the flow always has.
-let actx = null, tone = null, soundToken = 0;
-function playTone() {
-  return new Promise(resolve => {
-    try {
-      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
-      if (actx.state === "suspended") actx.resume();
-      const g = actx.createGain(), t = actx.currentTime + 0.05;
-      g.gain.setValueAtTime(0, actx.currentTime); g.connect(actx.destination);
-      const oscs = [853, 960].map(f => { const o = actx.createOscillator(); o.type = "sine"; o.frequency.value = f; o.connect(g); o.start(t); o.stop(t + 5.1); return o; });
-      [[0, 2], [2.5, 3.5], [4, 5]].forEach(([a, b]) => { g.gain.setTargetAtTime(0.22, t + a, 0.01); g.gain.setTargetAtTime(0, t + b, 0.01); });
-      tone = { oscs, g };
-      setTimeout(resolve, 5200);
-    } catch (e) { resolve(); }
-  });
-}
-function voiceFor(fil) {
-  if (!("speechSynthesis" in window)) return null;
-  const vs = speechSynthesis.getVoices();
-  return fil ? vs.find(v => /^(fil|tl)/i.test(v.lang)) || null : vs.find(v => /^en[-_](PH|US|GB)/i.test(v.lang)) || vs.find(v => /^en/i.test(v.lang)) || null;
-}
-// Returns false when no suitable voice exists (a Filipino alert read by an English voice would be unfair to the Filipino versions)
-function speak(text, fil) {
-  const v = voiceFor(fil);
-  if (!v) return false;
-  const u = new SpeechSynthesisUtterance(text); u.voice = v; u.lang = v.lang; u.rate = 0.95;
-  speechSynthesis.cancel(); speechSynthesis.speak(u); return true;
-}
-function stopSound() {
-  soundToken++;
-  if (tone) { tone.oscs.forEach(o => { try { o.stop(); } catch (e) {} }); try { tone.g.disconnect(); } catch (e) {} tone = null; }
-  try { speechSynthesis.cancel(); } catch (e) {}
-}
-function voiceNote() {
-  const fil = S && S.version !== null && isFil(S.version);
-  $("o-note").textContent = $("o-voice").checked && fil && !voiceFor(true) ? L.noVoice : "";
-}
-if ("speechSynthesis" in window) speechSynthesis.onvoiceschanged = () => { if ($("s-brief").classList.contains("on")) voiceNote(); };
+const elementTags = r => `<div class="tags">${ELEMENTS.map(e => `<span class="tag ${r[e] ? "yes" : "no"}">${r[e] ? "Has" : "No"} ${e}</span>`).join("")}</div>`;
 
 // ===================== Navigation =====================
 function go(view) {
-  stopSound();
-  document.querySelectorAll(".nav button").forEach(b => b.setAttribute("aria-selected", b.dataset.v === view));
+  stopTone(); clearInterval(timer);
+  document.querySelectorAll(".nav button").forEach(b => b.dataset.v === view ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
   document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.id === "v-" + view));
-  if (view === "results") renderResults();
-  if (view === "gallery") renderGallery();
-  window.scrollTo(0, 0);
+  ({ alerts: renderAlerts, results: renderResults, compose: renderComposer, evaluate: renderEval })[view]?.();
+  if (view === "survey" && !S) startRespondent();
+  history.replaceState(null, "", "#" + view); window.scrollTo(0, 0);
 }
 document.querySelectorAll(".nav button").forEach(b => b.onclick = () => go(b.dataset.v));
 document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));
 
+// ===================== Alert tone =====================
+// Two-tone attention signal (853 Hz + 960 Hz), one long tone then two short ones. Browsers allow audio only after a tap.
+let actx = null, tone = null;
+function playTone() {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === "suspended") actx.resume();
+    const g = actx.createGain(), t = actx.currentTime + 0.05; g.gain.setValueAtTime(0, actx.currentTime); g.connect(actx.destination);
+    const oscs = [853, 960].map(f => { const o = actx.createOscillator(); o.frequency.value = f; o.connect(g); o.start(t); o.stop(t + 5.1); return o; });
+    [[0, 2], [2.5, 3.5], [4, 5]].forEach(([a, b]) => { g.gain.setTargetAtTime(0.2, t + a, 0.01); g.gain.setTargetAtTime(0, t + b, 0.01); });
+    tone = { oscs, g };
+  } catch (e) {}
+}
+function stopTone() { if (tone) { tone.oscs.forEach(o => { try { o.stop(); } catch (e) {} }); try { tone.g.disconnect(); } catch (e) {} tone = null; } }
+
 // ===================== Survey =====================
-let S, timer, shownAt, pick, L = T.en;
-const show = id => { document.querySelectorAll("#phone .scr").forEach(s => s.classList.remove("on")); $(id).classList.add("on"); };
-function setProgress(done) { const p = $("prog"); p.style.display = done === null ? "none" : "block"; if (done !== null) p.firstElementChild.style.width = done + "%"; }
+const SHOW_SECONDS = 30;
+let S = null, timer = null, shownAt = 0, pick = {};
+const L = () => T[S && S.version !== null && isFil(S.version) ? "fil" : "en"];
+function progress(p) { $("pb").style.width = p + "%"; }
+function screen(html, cls = "") { $("scr").innerHTML = `<section class="scr ${cls}">${html}</section>`; $("scr").firstElementChild.scrollTop = 0; const h = $("scr").querySelector("h2"); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } }
+function live() {
+  const h = S && S.order ? HAZ[S.order[Math.min(S.i, 3)]] : null;
+  $("live").innerHTML = `<span>Respondent ID</span><span class="num">${S ? S.id : "–"}</span>
+    <span>Assigned version</span><span>${S && S.version !== null ? VLABEL[S.version] : "after the profile"}</span>
+    <span>Alert order</span><span>${S && S.order ? S.order.map(k => HAZ[k].name).join(", ") : "–"}</span>
+    <span>Current alert</span><span>${h && S.stage === "alerts" ? h.name : "–"}</span>
+    <span>Last viewing time</span><span class="num">${S && S.lastView ? S.lastView + " s" : "–"}</span>`;
+}
+// Balanced block randomization: each run of four respondents gets A-D once, in random order.
+// shortcut: block state lives in this browser; the real system keeps the block count in Google Sheets through Apps Script.
+function nextVersion() { let block = load("atlas-block", []); if (!block.length) block = shuffle([0, 1, 2, 3]); const v = block.shift(); save("atlas-block", block); return v; }
+
 function startRespondent() {
-  S = { id: Math.random().toString(36).slice(2, 10), version: null, i: 0, answers: [], attention: null, pref: null };
-  $("agree").checked = false; $("b-consent").disabled = true; setProgress(null); show("s-consent");
-  $("lv-id").textContent = S.id; $("lv-ver").textContent = "assigned after the age check"; $("lv-alert").textContent = "–"; $("lv-view").textContent = "–";
+  S = { id: Math.random().toString(36).slice(2, 10), version: null, order: null, i: 0, stage: "consent", profile: {}, answers: [], attention: null, pref: {} };
+  progress(0); live();
+  if (load("atlas-submitted", false)) {
+    screen(`<div class="step">Paalala / Notice</div><h2>Nakasagot na ang browser na ito</h2><p>Para patas ang pag-aaral, isang beses lang puwedeng sumagot ang bawat browser.</p>
+      <p class="bi">This browser has already answered. To keep the study fair, each browser can answer only once.</p><div class="fill"></div>
+      <p class="meta">Testing? Use “Start a new respondent” beside the phone.</p>`); return;
+  }
+  screen(`<div class="step">Pahintulot / Consent</div><h2>Pag-aaral tungkol sa emergency alerts</h2>
+    <p>Iniimbitahan ka ng mga BSIT student ng PUP na sumali sa pag-aaral kung paano naiintindihan ng mga tao ang emergency alerts sa cellphone. Babasa ka ng apat na alert at sasagot ng ilang tanong. Mga 10 minuto ito.</p>
+    <p class="bi">You are invited to a study by PUP BSIT students on how people understand phone emergency alerts. You will read four alerts and answer a few questions. It takes about 10 minutes.</p>
+    <p>Gawa-gawa lamang ang mga alert. Ang pangalan ng ahensya ay para lang maging makatotohanan. Walang hihinging pangalan, email, o numero. Boluntaryo ang pagsali at puwede kang huminto kahit kailan. Pagkatapos magsumite, maglalagay ang site ng maliit na marka sa browser para hindi makasagot ulit.</p>
+    <p class="bi">The alerts are simulated; agency names only make them realistic. No name, email, or number is asked. Joining is voluntary and you may stop anytime. After you submit, the site saves a small marker in your browser so it cannot answer twice.</p>
+    <label class="chk"><input type="checkbox" id="agree"><span>Nabasa ko ito at pumapayag akong sumali. <span class="meta">I have read this and agree to join.</span></span></label>
+    <div class="fill"></div><button class="big" id="b-next" disabled>Sang-ayon / I agree</button>`);
+  $("agree").onchange = e => $("b-next").disabled = !e.target.checked;
+  $("b-next").onclick = screening;
 }
-startRespondent();
-$("agree").onchange = e => $("b-consent").disabled = !e.target.checked;
-$("b-consent").onclick = () => show("s-age");
-document.querySelectorAll("[data-restart]").forEach(b => b.onclick = startRespondent);
-document.querySelectorAll("[data-age]").forEach(b => b.onclick = () => {
-  if (b.dataset.age === "no") return show("s-exit");
-  S.version = nextVersion(); L = isFil(S.version) ? T.fil : T.en;
-  $("lv-ver").textContent = V_LABEL[V[S.version]];
-  $("br-step").textContent = L.step; $("br-title").textContent = L.brief; $("br-1").textContent = L.b1; $("br-2").textContent = L.b2; $("b-brief").textContent = L.start;
-  $("o-warn").textContent = L.warn; $("o-tone-l").textContent = L.toneL; $("o-voice-l").textContent = L.voiceL; $("b-test").textContent = L.test;
-  voiceNote(); setProgress(5); show("s-brief");
-});
-$("o-voice").onchange = voiceNote;
-$("b-test").onclick = () => {
-  stopSound(); const token = soundToken;
-  const run = $("o-tone").checked ? playTone() : Promise.resolve();
-  run.then(() => { if (token === soundToken && $("o-voice").checked) speak(L.testLine, isFil(S.version)); });
-};
-$("b-brief").onclick = () => { stopSound(); showAlert(); };
-
+function screening() {
+  S.stage = "screening"; progress(6);
+  screen(`<div class="step">Screening</div><h2>Dalawang tanong / Two questions</h2>
+    <div class="q">18 taong gulang ka na ba o higit pa? <span class="meta">Are you 18 or older?</span></div>${yesNo("s1")}
+    <div class="q">Nakatira, nagtatrabaho, o nag-aaral ka ba sa Metro Manila? <span class="meta">Do you live, work, or study in Metro Manila?</span></div>${yesNo("s2")}
+    <div class="fill"></div><button class="big" id="b-next" disabled>Susunod / Next</button>`);
+  pick = {}; bindOpts(() => $("b-next").disabled = !("s1" in pick && "s2" in pick));
+  $("b-next").onclick = () => (pick.s1 && pick.s2) ? profile() : screen(`<h2>Salamat / Thank you</h2><p>Para lamang sa mga 18 taong gulang pataas sa Metro Manila ang pag-aaral na ito.</p><p class="bi">This study is only for adults aged 18 and above in Metro Manila.</p><div class="fill"></div><button class="big ghost" onclick="startRespondent()">Bumalik / Back to start</button>`);
+}
+const yesNo = name => `<div class="likert" style="grid-template-columns:1fr 1fr">${[["Oo / Yes", true], ["Hindi / No", false]].map(([l, k]) => `<button class="opt" data-q="${name}" data-k="${k}" aria-pressed="false">${l}</button>`).join("")}</div>`;
+function bindOpts(onChange, parse = v => v === "true" ? true : v === "false" ? false : isNaN(+v) || v === "" ? v : +v) {
+  $("scr").querySelectorAll(".opt, .mini").forEach(b => b.onclick = () => {
+    $("scr").querySelectorAll(`[data-q="${b.dataset.q}"]`).forEach(x => x.setAttribute("aria-pressed", "false"));
+    b.setAttribute("aria-pressed", "true"); pick[b.dataset.q] = parse(b.dataset.k); onChange();
+  });
+}
+const PROFILE = [
+  ["age", "Edad / Age group", ["18–24", "25–34", "35–44", "45–59", "60+"]],
+  ["lang", "Anong wika ang pinakamadali mong basahin? / Which language is easiest for you to read?", ["Filipino", "English", "Pareho / Both"]],
+  ["filEase", "Gaano kadali para sa iyo ang magbasa ng Filipino? / How easy is reading Filipino? (1 = Very hard, 5 = Very easy)", ["1", "2", "3", "4", "5"]],
+  ["enEase", "Gaano kadali para sa iyo ang magbasa ng English? / How easy is reading English? (1 = Very hard, 5 = Very easy)", ["1", "2", "3", "4", "5"]],
+  ["prior", "Nakatanggap ka na ba ng emergency alert sa cellphone? / Have you received an emergency alert on your phone before?", ["Oo / Yes", "Hindi / No", "Hindi sigurado / Not sure"]] ];
+const CITIES = ["Caloocan", "Las Piñas", "Makati", "Malabon", "Mandaluyong", "Manila", "Marikina", "Muntinlupa", "Navotas", "Parañaque", "Pasay", "Pasig", "Pateros", "Quezon City", "San Juan", "Taguig", "Valenzuela"];
+function profile() {
+  S.stage = "profile"; progress(12); pick = {};
+  screen(`<div class="step">Profile</div><h2>Tungkol sa iyo / About you</h2>
+    ${PROFILE.slice(0, 1).map(pq).join("")}
+    <label class="q" for="city" style="display:block">Lungsod / City in Metro Manila</label>
+    <select id="city" style="width:100%;min-height:44px;border:1px solid var(--line2);border-radius:10px;padding:8px"><option value="">Pumili / Choose</option>${CITIES.map(c => `<option>${c}</option>`).join("")}</select>
+    ${PROFILE.slice(1).map(pq).join("")}
+    <div class="fill"></div><button class="big" id="b-next" disabled>Susunod / Next</button>`);
+  const ok = () => $("b-next").disabled = !(PROFILE.every(p => p[0] in pick) && $("city").value);
+  bindOpts(ok, v => v); $("city").onchange = ok;
+  $("b-next").onclick = () => { S.profile = { ...pick, city: $("city").value }; assign(); };
+}
+const pq = ([k, label, opts]) => `<div class="q">${label}</div><div class="likert" style="grid-template-columns:repeat(${Math.min(opts.length, 5)},1fr)">${opts.map(o => `<button class="opt" data-q="${k}" data-k="${esc(o)}" aria-pressed="false">${o}</button>`).join("")}</div>`;
+function assign() {
+  S.version = nextVersion(); S.order = shuffle([0, 1, 2, 3]); S.stage = "brief"; live(); progress(16);
+  const l = L();
+  screen(`<div class="step">${isFil(S.version) ? "Hakbang 3" : "Step 3"}</div><h2>${l.brief}</h2><p>${l.b1}</p><p>${l.b2}</p><div class="fill"></div><button class="big" id="b-next">${l.start}</button>`);
+  $("b-next").onclick = () => { S.stage = "alerts"; showAlert(); };
+}
 function showAlert() {
-  const h = HAZ[S.i];
-  document.querySelectorAll(".t-clock").forEach(n => n.textContent = h.clock);
-  $("a-date").textContent = h.date; $("a-msg").textContent = h.v[S.version];
-  $("lv-alert").textContent = `${h.name} (${S.i + 1} of ${HAZ.length})`;
-  const d = $("a-dialog"); d.classList.remove("pop"); void d.offsetWidth; d.classList.add("pop");
-  $("s-alert").classList.add("alerting");
-  setProgress(10 + S.i * 22); show("s-alert");
+  const h = HAZ[S.order[S.i]], msg = h.v[S.version]; live(); progress(18 + S.i * 18);
+  screen(`<div class="sbar"><span>${h.clock}</span><span>5G ▮▮▮</span></div><div class="clock">${h.clock}</div><div class="date">${h.date}</div>
+    <div class="scrim"></div>
+    <div class="dialog pop" role="alertdialog" aria-labelledby="al-h" aria-describedby="al-m">
+      <div class="hd" id="al-h"><svg class="i"><use href="#ic-warn"/></svg>Emergency alert<span class="sim">SIMULATION</span></div>
+      <div class="msg" id="al-m">${esc(msg)}</div>
+      <div class="ring" aria-hidden="true"><i id="ring"></i></div>
+      <button class="ok" id="b-ok">OK</button>
+    </div>`, "lock");
+  $("b-ok").focus();
+  if ($("o-tone").checked) playTone();
   try { navigator.vibrate && navigator.vibrate([400, 150, 400]); } catch (e) {}
-  stopSound(); const token = soundToken, msg = h.v[S.version], fil = isFil(S.version);
-  const wantTone = $("o-tone").checked, wantVoice = $("o-voice").checked;
-  $("lv-sound").textContent = [wantTone ? "tone" : "", wantVoice ? (voiceFor(fil) ? "read aloud" : "no voice available") : ""].filter(Boolean).join(" + ") || "off";
-  (wantTone ? playTone() : Promise.resolve()).then(() => { if (token === soundToken && wantVoice) speak(msg, fil); });
-  let left = SHOW_SECONDS; const ring = $("a-ring"); ring.style.transition = "none"; ring.style.width = "100%"; void ring.offsetWidth; ring.style.transition = "width 1s linear";
-  shownAt = performance.now(); clearInterval(timer);
-  timer = setInterval(() => { left--; ring.style.width = (left / SHOW_SECONDS * 100) + "%"; if (left <= 0) hideAlert(); }, 1000);
+  let left = SHOW_SECONDS; const ring = $("ring"); shownAt = performance.now(); clearInterval(timer);
+  requestAnimationFrame(() => ring.style.width = "100%");
+  timer = setInterval(() => { left--; ring.style.width = (left / SHOW_SECONDS * 100) + "%"; if (left <= 0) closeAlert(); }, 1000);
+  $("b-ok").onclick = closeAlert;
 }
-$("b-ok").onclick = hideAlert;
-function hideAlert() {
-  clearInterval(timer); stopSound(); S.view = Math.round((performance.now() - shownAt) / 100) / 10;
-  $("lv-view").textContent = S.view + " s"; showQuestions();
+function closeAlert() { clearInterval(timer); stopTone(); S.lastView = Math.round((performance.now() - shownAt) / 100) / 10; live(); intention(); }
+function intention() {
+  const l = L(); pick = {}; progress(24 + S.i * 18);
+  const att = S.i === 1;   // attention check after the second alert
+  screen(`<div class="step">${l.step(S.i + 1, 4)}</div><h2>${l.intentT}</h2>
+    ${l.intent.map((q, k) => likert(`i${k}`, q, l)).join("")}${att ? likert("att", l.att, l) : ""}
+    <div class="fill"></div><button class="big" id="b-next" disabled>${l.next}</button>`);
+  bindOpts(() => $("b-next").disabled = !([0, 1, 2, 3].every(k => `i${k}` in pick) && (!att || "att" in pick)));
+  $("b-next").onclick = () => { S.cur = { intentItems: [0, 1, 2, 3].map(k => pick[`i${k}`]) }; if (att) S.attention = pick.att === 5; comprehension(); };
 }
-function qTitle(box, t) { const d = document.createElement("div"); d.className = "q"; d.textContent = t; box.appendChild(d); }
-// options = [{label, key}], shuffled unless it's a scale
-function choice(box, name, options, scale = false) {
-  const wrap = document.createElement("div"); if (scale) wrap.className = "scale";
-  (scale ? options : shuffle(options)).forEach(o => {
-    const b = document.createElement("button"); b.className = "opt"; b.textContent = o.label;
-    b.onclick = () => { wrap.querySelectorAll(".opt").forEach(x => x.classList.remove("sel")); b.classList.add("sel"); pick[name] = o.key; validate(); };
-    wrap.appendChild(b);
-  });
-  box.appendChild(wrap);
+const likert = (name, q, l) => `<div class="q">${q}</div><div class="likert" role="group" aria-label="${esc(q)}">${[1, 2, 3, 4, 5].map(n => `<button class="opt" data-q="${name}" data-k="${n}" aria-pressed="false">${n}</button>`).join("")}</div><div class="ends"><span>${l.scale[0]}</span><span>${l.scale[1]}</span></div>`;
+function comprehension() {
+  const l = L(), h = HAZ[S.order[S.i]], lang = isFil(S.version) ? "fil" : "en"; pick = {}; progress(30 + S.i * 18);
+  // Same four options for every version: the complete-alert fact, two unstated answers, and "did not say".
+  const opts = h.items.map(it => shuffle([{ label: it[lang][0], key: "fact" }, { label: it[lang][1], key: "w1" }, { label: it[lang][2], key: "w2" }])
+    .concat([{ label: l.notSaid, key: "none" }]));
+  screen(`<div class="step">${l.step(S.i + 1, 4)}</div><h2>${l.compT}</h2>
+    ${l.stems.map((s, k) => `<div class="q">${s}</div>${opts[k].map(o => `<button class="opt" data-q="c${k}" data-k="${o.key}" aria-pressed="false">${esc(o.label)}</button>`).join("")}`).join("")}
+    <div class="fill"></div><button class="big" id="b-next" disabled>${l.next}</button>`);
+  bindOpts(() => $("b-next").disabled = ![0, 1, 2, 3, 4].every(k => `c${k}` in pick), v => v);
+  $("b-next").onclick = () => {
+    // Per-version key: typical alerts leave out time (item 3) and guidance (item 4), so "did not say" is correct there.
+    const key = k => (!isComplete(S.version) && (k === 2 || k === 3)) ? "none" : "fact";
+    const items = [0, 1, 2, 3, 4].map(k => pick[`c${k}`] === key(k) ? 1 : 0);
+    S.answers.push({ hazard: h.id, position: S.i + 1, view: S.lastView, intentItems: S.cur.intentItems, intent: mean(S.cur.intentItems),
+                     compItems: items, comp: items.reduce((a, b) => a + b, 0), saidNone: [0, 1, 2, 3, 4].filter(k => pick[`c${k}`] === "none").length });
+    S.i++; S.i < 4 ? showAlert() : preference(0);
+  };
 }
-function showQuestions() {
-  const h = HAZ[S.i], lang = isFil(S.version) ? "fil" : "en", box = $("q-body"); box.innerHTML = ""; pick = {};
-  $("q-step").textContent = L.qStep(S.i + 1, HAZ.length); $("q-title").textContent = L.qTitle; $("b-q").textContent = L.next;
-  qTitle(box, L.q1); choice(box, "q1", h.q1[lang].map((label, k) => ({ label, key: k })));        // key 0 is correct
-  qTitle(box, L.q2); choice(box, "q2", [...h.q2[lang].map((label, k) => ({ label, key: k })), { label: L.notSaid, key: "none" }]);
-  qTitle(box, L.q3); choice(box, "q3", [1, 2, 3, 4, 5].map(n => ({ label: String(n), key: n })), true);
-  const e = document.createElement("div"); e.className = "ends"; e.innerHTML = `<span>${esc(L.lo)}</span><span>${esc(L.hi)}</span>`; box.appendChild(e);
-  if (S.i === 1) { qTitle(box, L.att); choice(box, "att", L.attO.map((label, k) => ({ label, key: k }))); }
-  $("b-q").disabled = true; setProgress(16 + S.i * 22); show("s-q"); $("s-q").scrollTop = 0;
+function preference(k) {
+  const l = L(), h = HAZ[k]; pick = {}; S.stage = "preference"; progress(92 + k * 2);
+  const name = isFil(S.version) ? HAZ_FIL[h.id] : h.name.toLowerCase();
+  screen(`<div class="step">${l.prefStep} · ${k + 1}/4</div><h2>${l.prefT(name)}</h2>
+    ${shuffle([0, 1, 2, 3]).map((v, n) => `<button class="mini" data-q="p" data-k="${v}" aria-pressed="false"><b>${l.opt} ${n + 1}</b>${esc(h.v[v])}</button>`).join("")}
+    <div class="fill"></div><button class="big" id="b-next" disabled>${k < 3 ? l.prefNext : l.submit}</button>`);
+  bindOpts(() => $("b-next").disabled = !("p" in pick));
+  $("b-next").onclick = () => { S.pref[h.id] = pick.p; k < 3 ? preference(k + 1) : finish(); };
 }
-function validate() { const need = ["q1", "q2", "q3"].concat(S.i === 1 ? ["att"] : []); $("b-q").disabled = !need.every(k => k in pick); }
-$("b-q").onclick = () => {
-  const complete = S.version >= 2;                      // C and D include guidance
-  const q2ok = complete ? pick.q2 === 0 : pick.q2 === "none";   // typical alerts: correct answer is "did not say"
-  S.answers.push({ hazard: HAZ[S.i].id, view: S.view, comp: (pick.q1 === 0 ? 1 : 0) + (q2ok ? 1 : 0), intent: pick.q3 });
-  if (S.i === 1) S.attention = pick.att === 2;
-  S.i++;
-  if (S.i < HAZ.length) showAlert(); else showPref();
-};
-function showPref() {
-  const box = $("pref"); box.innerHTML = "";
-  $("p-step").textContent = L.pStep; $("p-title").textContent = L.pTitle; $("p-sub").textContent = L.pSub; $("b-pref").textContent = L.submit;
-  shuffle([0, 1, 2, 3]).forEach((v, n) => {
-    const b = document.createElement("button"); b.className = "mini";
-    b.innerHTML = `<b>${esc(L.opt)} ${n + 1}</b>`; b.appendChild(document.createTextNode(HAZ[0].v[v]));
-    b.onclick = () => { box.querySelectorAll(".mini").forEach(o => o.classList.remove("sel")); b.classList.add("sel"); S.pref = v; $("b-pref").disabled = false; };
-    box.appendChild(b);
-  });
-  $("b-pref").disabled = true; setProgress(96); show("s-pref"); $("s-pref").scrollTop = 0;
-}
-$("b-pref").onclick = () => {
-  saveResponse(S); setProgress(100);
-  $("d-title").textContent = L.dTitle; $("d-1").textContent = L.d1; $("d-2").textContent = L.d2; $("d-again").textContent = L.again;
-  show("s-done");
-};
-function saveResponse(s) {
+function finish() {
   const all = load("atlas-responses", []);
-  all.push({ id: s.id, version: V[s.version], answers: s.answers, attention: s.attention, pref: V[s.pref], at: new Date().toISOString() });
-  save("atlas-responses", all);
+  all.push({ id: S.id, version: V[S.version], profile: S.profile, answers: S.answers, attention: S.attention, pref: Object.fromEntries(Object.entries(S.pref).map(([h, v]) => [h, V[v]])), at: new Date().toISOString() });
+  save("atlas-responses", all); save("atlas-submitted", true); progress(100); S.stage = "done"; live();
+  const l = L();
+  screen(`<h2>${l.doneT}</h2><p>${l.done1}</p><p class="meta">${l.done2}</p><div class="fill"></div><button class="big ghost" id="b-res">View results</button>`);
+  $("b-res").onclick = () => go("results");
 }
+$("b-reset").onclick = () => { save("atlas-submitted", false); clearInterval(timer); stopTone(); startRespondent(); toast("New respondent started"); };
 
-// ===================== Checker rules (shared) =====================
-const RULES = {
-  Hazard:   /\b(rain\w*|ulan|pag-ulan|baha|pagbaha|flood\w*|lindol|earthquake|init|heat|smog|air|landslide\w*|pagguho|bagyo|typhoon|storm|tsunami|sunog|fire)\b/gi,
-  Location: /\b(Metro Manila|Manila|NCR|Quezon City|Makati|Pasig|Taguig|Marikina|Caloocan|Malabon|Navotas|Valenzuela|Para[ñn]aque|Pasay|Las Pi[ñn]as|Muntinlupa|Mandaluyong|San Juan|Pateros|Rizal|Batangas|Cavite|Bulacan|Laguna|barangay|brgy)\b/gi,
-  Time:     /(\b\d{1,2}(:\d{2})?\s?(AM|PM|NN)\b|\bhanggang\b|\buntil\b|\bngayong (araw|gabi|hapon)\b|\btoday\b|\btonight\b|\bmamaya\b|\bnext few hours\b|\bsusunod na mga oras\b)/gi,
-  Guidance: /\b(lumikas|evacuate|manatili|stay|iwasan|iwasang|avoid|huwag|do not|don't|magsuot|wear|uminom|drink|pumunta|go to|isara|close|dapa|drop|takip|cover|kapit|hold on|ihanda|prepare)\b/gi,
-  Source:   /\b(NDRRMC|PAGASA|PHIVOLCS|DENR|EMB|MMDA|DRRMO|OCD|DOH|LGU)\b/gi,
-};
-function detect(text) { const out = {}; for (const [k, re] of Object.entries(RULES)) { const m = text.match(re); out[k] = m ? [...new Set(m.map(x => x.trim()))] : []; } return out; }
-const pills = f => Object.entries(f).map(([k, m]) => `<span class="pill ${m.length ? "yes" : "no"}">${m.length ? "✓" : "✗"} ${k}</span>`).join("");
-
-// ===================== Gallery =====================
-function renderGallery() {
-  const tags = $("g-tags").checked;
-  let html = `<div></div>` + V.map(v => `<div class="ch">${V_LABEL[v]}</div>`).join("");
-  HAZ.forEach(h => {
-    html += `<div class="rh">${esc(h.name)}</div>`;
-    h.v.forEach((msg, i) => {
-      html += `<div class="card" data-v="${V_LABEL[V[i]]}"><div class="t"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 1 21h22L12 2z" fill="#C62828"/></svg>Emergency alert: Extreme</div><div class="m">${esc(msg)}</div>${tags ? `<div class="pills">${pills(detect(msg))}</div>` : ""}</div>`;
-    });
-  });
-  $("gal").innerHTML = html;
+// ===================== Alerts gallery =====================
+function renderAlerts() {
+  $("gal").innerHTML = `<div class="ch"></div>${VLABEL.map(l => `<div class="ch">${l}</div>`).join("")}` +
+    HAZ.map(h => `<div class="ch">${h.name}</div>` + h.v.map((t, v) => `<div class="card"><span class="sr">${VLABEL[v]}: </span>${esc(t)}${elementTags(checkAlert(t))}</div>`).join("")).join("");
+  $("real").innerHTML = `<thead><tr><th>Alert text</th><th>Source</th>${ELEMENTS.map(e => `<th>${e[0].toUpperCase() + e.slice(1)}</th>`).join("")}</tr></thead><tbody>` +
+    REAL.map(r => { const c = checkAlert(r.text); return `<tr><td>${esc(r.text)}</td><td class="meta">${r.src}</td>${ELEMENTS.map(e => `<td><span class="tag ${c[e] ? "yes" : "no"}">${c[e] ? "Yes" : "No"}</span></td>`).join("")}</tr>`; }).join("") + "</tbody>";
 }
-$("g-tags").onchange = renderGallery;
 
 // ===================== Composer =====================
-const PRESET = {
-  flood: { name: "Flood / heavy rain", src: "NDRRMC/PAGASA", fil: "Red Rainfall Warning", en: "Red Rainfall Warning",
-    impF: "Malubhang pagbaha sa mabababang lugar.", impE: "Serious flooding in low-lying areas.",
-    act: [["Lumikas na kung nakatira sa tabi ng ilog o estero", "Evacuate now if you live near a river or creek"], ["huwag lumusong sa baha", "do not wade through floodwater"], ["ihanda ang go bag", "prepare your go bag"]] },
-  heat: { name: "Extreme heat", src: "NDRRMC/PAGASA", fil: "Mapanganib na init (heat index 42-51°C)", en: "Dangerous heat (heat index 42-51°C)",
-    impF: "Maaaring magka-heat stroke.", impE: "Heat stroke is possible.",
-    act: [["Manatili sa lilim o sa loob ng bahay", "Stay in the shade or indoors"], ["uminom ng maraming tubig", "drink plenty of water"], ["iwasan ang mabibigat na gawain sa labas", "avoid heavy work outside"]] },
-  quake: { name: "Earthquake", src: "NDRRMC/PHIVOLCS", fil: "Malakas na lindol", en: "Strong earthquake",
-    impF: "Asahan ang aftershocks.", impE: "Expect aftershocks.",
-    act: [["Dapa, Takip, Kapit", "Drop, Cover, and Hold On"], ["pagtigil ng pagyanig, pumunta sa bukas na lugar", "when the shaking stops, go to an open area"], ["lumayo sa gusali at poste", "stay away from buildings and posts"]] },
-  air: { name: "Air quality (smog)", src: "NDRRMC/DENR-EMB", fil: "Hindi ligtas ang hangin (smog)", en: "Unhealthy air (smog)",
-    impF: "Mas delikado sa may hika, bata, at matatanda.", impE: "Most dangerous for people with asthma, children, and older adults.",
-    act: [["Magsuot ng face mask sa labas", "Wear a face mask outside"], ["isara ang mga bintana", "close windows"], ["iwasang mag-ehersisyo sa labas", "avoid exercising outdoors"]] },
-};
-let cLang = "fil", lastFil = "", lastEn = "";
-Object.entries(PRESET).forEach(([k, p]) => { const o = document.createElement("option"); o.value = k; o.textContent = p.name; $("c-hazard").appendChild(o); });
-function renderActions() {
-  const p = PRESET[$("c-hazard").value], box = $("c-actions"); box.innerHTML = "";
-  $("c-src").value = p.src;
-  p.act.forEach(([f, e], i) => {
-    const l = document.createElement("label"); l.className = "chk";
-    l.innerHTML = `<input type="checkbox" ${i < 2 ? "checked" : ""} data-i="${i}"><span>${esc(e)}<br><span class="meta">${esc(f)}</span></span>`;
-    l.querySelector("input").onchange = compose; box.appendChild(l);
-  });
+const GUIDE = {
+  flood: [["Evacuate now if you live near a river or creek, and do not wade through floodwater.", "Lumikas na kung nakatira sa tabi ng ilog o estero, at huwag lumusong sa baha."],
+          ["Move to higher ground and stay away from rivers and drainage canals.", "Pumunta sa mataas na lugar at lumayo sa ilog at kanal."]],
+  heat: [["Stay in the shade or indoors, drink plenty of water, and avoid heavy work outside.", "Manatili sa lilim o sa loob ng bahay, uminom ng maraming tubig, at iwasan ang mabibigat na gawain sa labas."]],
+  quake: [["If indoors: Drop, Cover, and Hold On. When the shaking stops, go to an open area away from buildings and posts.", "Kung nasa loob: Dapa, Takip, Kapit. Pagtigil ng pagyanig, pumunta sa bukas na lugar na malayo sa gusali at poste."]],
+  air: [["Wear a face mask outside, close windows, and avoid exercising outdoors.", "Magsuot ng face mask sa labas, isara ang mga bintana, at iwasang mag-ehersisyo sa labas."]] };
+const TPL = {
+  flood: { level: "Red", time: "5:15PM", en: (f) => `${f.level} Rainfall Warning in ${f.loc} until ${f.time}. Expect heavy rain, flooding, and landslides.`, fil: (f) => `${f.level} Rainfall Warning sa ${f.loc} hanggang ${f.time}. Asahan ang matinding pag-ulan, pagbaha at pagguho ng lupa.` },
+  heat: { level: "Danger", time: "12NN to 4PM", en: (f) => `Heat Index Warning: '${f.level}' level heat in ${f.loc} from ${f.time}.`, fil: (f) => `Heat Index Warning: '${f.level}' na antas ng init sa ${f.loc} mula ${f.time.replace(" to ", " hanggang ")}.` },
+  quake: { level: "6.8", time: "the next 24 hours", en: (f) => `Magnitude ${f.level} earthquake felt in ${f.loc}. Expect aftershocks in ${f.time}.`, fil: (f) => `Magnitude ${f.level} na lindol, naramdaman sa ${f.loc}. Asahan ang aftershocks sa ${f.time.replace("the next 24 hours", "susunod na 24 oras")}.` },
+  air: { level: "High", time: "6PM", en: (f) => `${f.level} smog levels in ${f.loc} until ${f.time}.`, fil: (f) => `${f.level === "High" ? "Mataas na" : f.level} antas ng smog sa ${f.loc} hanggang ${f.time}.` } };
+let composeStatus = "Draft";
+function stamp() { const d = new Date(); let h = d.getHours(), m = String(d.getMinutes()).padStart(2, "0"), ap = h >= 12 ? "PM" : "AM"; h = h % 12 || 12;
+  return `${h}:${m}${ap}, ${String(d.getDate()).padStart(2, "0")}${d.toLocaleString("en", { month: "short" })}${String(d.getFullYear()).slice(2)}`; }
+function renderComposer() {
+  if (!$("c-haz").options.length) {
+    $("c-haz").innerHTML = HAZ.map(h => `<option value="${h.id}">${h.name}</option>`).join("");
+    const fill = () => { const id = $("c-haz").value; $("c-level").value = TPL[id].level; $("c-time").value = TPL[id].time;
+      $("c-guide").innerHTML = GUIDE[id].map((g, k) => `<option value="${k}">${esc(g[0])}</option>`).join("") + `<option value="">No guidance (not allowed)</option>`; compose(); };
+    $("c-haz").onchange = fill; ["c-level", "c-loc", "c-time", "c-src"].forEach(id => $(id).oninput = compose); $("c-guide").onchange = compose;
+    $("c-approve").onclick = () => { composeStatus = "Approved"; compose(true); toast("Draft approved"); };
+    fill();
+  } else compose();
 }
-const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
-const joinList = (a, and) => a.length < 2 ? a.join("") : a.slice(0, -1).join(", ") + `, ${and} ` + a[a.length - 1];
-function stamp() {
-  const d = new Date(), h = d.getHours(), m = String(d.getMinutes()).padStart(2, "0");
-  const mon = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()];
-  return `${(h % 12) || 12}:${m}${h < 12 ? "AM" : "PM"}, ${String(d.getDate()).padStart(2, "0")}${mon}${String(d.getFullYear()).slice(2)}`;
+function compose(keep) {
+  if (!keep) composeStatus = "Draft";
+  const id = $("c-haz").value, f = { level: $("c-level").value.trim(), loc: $("c-loc").value.trim(), time: $("c-time").value.trim(), src: $("c-src").value.trim() || "NDRRMC" };
+  const g = $("c-guide").value === "" ? ["", ""] : GUIDE[id][+$("c-guide").value];
+  const head = `${f.src} (${stamp()})`;
+  const out = { en: `${head} ${TPL[id].en(f)} ${g[0]}`.trim(), fil: `${head} ${TPL[id].fil(f)} ${g[1]}`.trim() };
+  const rec = recommendLanguage(id);
+  $("c-rec").innerHTML = `<div class="note">${rec.text}</div>`;
+  $("c-out").innerHTML = ["fil", "en"].map(lang => { const t = out[lang], c = checkAlert(t), n = [...t].length;
+    return `<div class="sec"><div class="btns" style="justify-content:space-between"><h2 style="margin:0">${lang === "fil" ? "Filipino" : "English"} ${rec.lang === lang ? '<span class="tag yes">Recommended</span>' : ""}</h2>
+      <button class="btn ghost" data-copy="${lang}"><svg class="i"><use href="#ic-copy"/></svg>Copy</button></div>
+      <p class="card" style="margin:10px 0">${esc(t)}</p>
+      <div class="btns" style="justify-content:space-between">${elementTags(c)}<span class="meta num ${n > 360 ? "" : ""}">${n}/360 characters${n > 360 ? ' · <b style="color:var(--bad)">too long</b>' : n > 90 ? " · needs the 360-character format" : ""}</span></div></div>`; }).join("");
+  $("c-out").querySelectorAll("[data-copy]").forEach(b => b.onclick = () => { navigator.clipboard?.writeText(out[b.dataset.copy]).then(() => toast("Copied"), () => toast("Copy blocked by the browser")); });
+  $("c-status").textContent = composeStatus; $("c-status").className = "tag " + (composeStatus === "Approved" ? "yes" : "");
+  $("c-approve").disabled = !ELEMENTS.every(e => checkAlert(out.en)[e]) || composeStatus === "Approved";
 }
-function compose() {
-  const p = PRESET[$("c-hazard").value], loc = $("c-loc").value.trim(), from = $("c-from").value.trim(), until = $("c-until").value.trim(), src = $("c-src").value;
-  const acts = [...document.querySelectorAll("#c-actions input:checked")].map(i => p.act[+i.dataset.i]);
-  const st = stamp();
-  const tF = from && until ? ` mula ${from} hanggang ${until}` : until ? ` hanggang ${until}` : "";
-  const tE = from && until ? ` from ${from} to ${until}` : until ? ` until ${until}` : "";
-  lastFil = `${src} (${st}): ${p.fil} sa ${loc || "[lokasyon]"}${tF}. ${p.impF}` + (acts.length ? ` ${cap(joinList(acts.map(a => a[0]), "at"))}.` : "");
-  lastEn = `${src} (${st}): ${p.en} in ${loc || "[location]"}${tE}. ${p.impE}` + (acts.length ? ` ${cap(joinList(acts.map(a => a[1]), "and"))}.` : "");
-  const msg = cLang === "fil" ? lastFil : lastEn;
-  $("c-msg").textContent = msg;
-  const n = msg.length, parts = n <= 160 ? 1 : Math.ceil(n / 153);
-  $("c-count").innerHTML = `${n} characters · ${parts} SMS part${parts > 1 ? "s" : ""}` + (n > 360 ? ` · <span class="warn">over 360 characters, consider shortening</span>` : "");
-  $("c-checks").innerHTML = pills(detect(msg));
+// Preference rule from the paper: combine picks by language; recommend the one picked more often if the difference is clear.
+function recommendLanguage(hid) {
+  const rs = valid(load("atlas-responses", [])), fil = rs.filter(r => ["A", "C"].includes(r.pref[hid])).length, en = rs.filter(r => ["B", "D"].includes(r.pref[hid])).length, n = fil + en;
+  if (n < 10) return { lang: null, text: `Not enough responses yet to recommend a language (${n} so far). Both versions are shown.` };
+  const chi = (fil - n / 2) ** 2 / (n / 2) * 2, clear = chi > 6.24;   // chi-square with df 1, critical value at .0125
+  if (!clear) return { lang: null, text: `No clear language preference for this alert type (Filipino ${fil}, English ${en}). Both versions are shown.` };
+  const lang = fil > en ? "fil" : "en";
+  return { lang, text: `Respondents preferred <b>${lang === "fil" ? "Filipino" : "English"}</b> for this alert type (Filipino ${fil}, English ${en}).` };
 }
-["c-hazard", "c-loc", "c-from", "c-until", "c-src"].forEach(id => $(id).addEventListener("input", () => { if (id === "c-hazard") renderActions(); compose(); }));
-document.querySelectorAll("[data-lang]").forEach(b => b.onclick = () => {
-  cLang = b.dataset.lang; document.querySelectorAll("[data-lang]").forEach(x => x.classList.toggle("on", x === b)); compose();
-});
-$("c-play").onclick = () => {
-  stopSound(); const token = soundToken, fil = cLang === "fil", text = $("c-msg").textContent;
-  $("c-copied").textContent = "";
-  playTone().then(() => { if (token === soundToken && !speak(text, fil)) $("c-copied").textContent = fil ? "No Filipino voice on this device" : "No English voice on this device"; });
-};
-$("c-copy").onclick = async () => { try { await navigator.clipboard.writeText($("c-msg").textContent); $("c-copied").textContent = "Copied"; } catch (e) { $("c-copied").textContent = "Select the preview text to copy it"; } };
-function renderDrafts() {
-  const ds = load("atlas-drafts", []);
-  $("c-drafts").innerHTML = ds.length ? "<tr><th>Saved</th><th>Hazard</th><th>Status</th><th></th></tr>" + ds.slice().reverse().map(d =>
-    `<tr><td>${new Date(d.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</td><td>${esc(PRESET[d.hazard].name)}</td>
-     <td><span class="status ${d.status}">${d.status === "approved" ? "Approved" : "Draft"}</span></td>
-     <td style="text-align:right">${d.status === "draft" ? `<button class="btn ghost sm" data-approve="${d.id}">Approve</button>` : ""} <button class="btn ghost sm" data-load="${d.id}">View</button></td></tr>`).join("")
-    : `<tr><td class="meta">No drafts yet. Saved alerts show here, and a supervisor approves them before sending.</td></tr>`;
-  document.querySelectorAll("[data-approve]").forEach(b => b.onclick = () => { const all = load("atlas-drafts", []); all.find(x => x.id === b.dataset.approve).status = "approved"; save("atlas-drafts", all); renderDrafts(); });
-  document.querySelectorAll("[data-load]").forEach(b => b.onclick = () => { const d = load("atlas-drafts", []).find(x => x.id === b.dataset.load); $("c-msg").textContent = cLang === "fil" ? d.fil : d.en; $("c-checks").innerHTML = pills(detect($("c-msg").textContent)); });
-}
-$("c-save").onclick = () => {
-  const all = load("atlas-drafts", []);
-  all.push({ id: Math.random().toString(36).slice(2, 9), hazard: $("c-hazard").value, fil: lastFil, en: lastEn, status: "draft", at: new Date().toISOString() });
-  save("atlas-drafts", all); renderDrafts();
-};
 
-// ===================== Checker view =====================
+// ===================== Checker =====================
+const SAMPLES = [REAL[3].text, HAZ[0].v[3], HAZ[1].v[0]];
 function runCheck() {
-  const t = $("k-text").value, f = detect(t), miss = Object.keys(f).filter(k => !f[k].length);
-  $("k-result").innerHTML = t.trim() ? `<div class="pills">${pills(f)}</div><p class="meta" style="margin:8px 0 0">${miss.length ? `Missing ${miss.length} of 5: ${miss.join(", ")}` : "All five parts found"}</p>` : "";
-  $("k-high").innerHTML = t.trim() ? "Matched words: " + Object.values(f).flat().map(w => `<mark>${esc(w)}</mark>`).join(" ") : "";
+  const t = $("k-text").value.trim();
+  if (!t) { $("k-out").innerHTML = ""; return; }
+  const c = checkAlert(t), missing = ELEMENTS.filter(e => !c[e]);
+  $("k-out").innerHTML = `<h2>${missing.length ? `Missing ${missing.length} of 5 elements` : "All five elements found"}</h2>${elementTags(c)}
+    <p class="meta" style="margin-top:12px">${missing.length ? "Add: " + missing.map(e => ({ hazard: "what the hazard is", location: "the affected area", time: "how long the danger lasts", guidance: "what people should do", source: "who sent it" })[e]).join("; ") + "." : "This alert tells people what, where, how long, what to do, and who sent it."} ${[...t].length} characters.</p>`;
 }
-$("k-text").addEventListener("input", runCheck);
-document.querySelectorAll("[data-sample]").forEach(b => b.onclick = () => {
-  $("k-text").value = b.dataset.sample === "real"
-    ? "NDRRMC(08:32PM, 24Oct24)Red Rainfall Warning sa Batangas, Rizal, at Metro Manila. Asahan ang matinding pag-ulan, pagbaha at pagguho ng lupa."
-    : HAZ[0].v[+b.dataset.sample];
-  runCheck();
-});
+$("k-text").oninput = runCheck;
+document.querySelectorAll("[data-sample]").forEach(b => b.onclick = () => { $("k-text").value = SAMPLES[+b.dataset.sample]; runCheck(); });
+
+// ===================== Evaluate (ISO/IEC 25010) =====================
+function renderEval() {
+  if ($("e-items").children.length) return;
+  $("e-items").innerHTML = ISO.map(([c, a, b], i) => `<div class="sec"><h2>${c}</h2>${[a, b].map((s, j) => `<fieldset style="border:0;padding:0;margin:0 0 12px"><legend style="margin-bottom:6px">${s}</legend>
+      <div class="likert" style="max-width:420px">${[1, 2, 3, 4, 5].map(n => `<label class="opt" style="display:flex;align-items:center;justify-content:center;gap:6px"><input type="radio" name="e${i}_${j}" value="${n}" style="accent-color:var(--accent)">${n}</label>`).join("")}</div></fieldset>`).join("")}</div>`).join("");
+}
+$("e-submit").onclick = () => {
+  const role = $("e-role").value, ratings = ISO.map((_, i) => [0, 1].map(j => +(document.querySelector(`input[name="e${i}_${j}"]:checked`)?.value || 0)));
+  const missing = ratings.flat().filter(x => !x).length;
+  if (!role || missing) { $("e-err").textContent = !role ? "Choose an evaluator group." : `Rate all statements (${missing} left).`; return; }
+  $("e-err").textContent = "";
+  const all = load("atlas-evals", []); all.push({ id: Math.random().toString(36).slice(2, 8), role, years: $("e-yrs").value.trim(), ratings, at: new Date().toISOString() }); save("atlas-evals", all);
+  $("eform").reset(); toast("Evaluation saved"); go("results");
+};
 
 // ===================== Results =====================
-const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN;
-const f2 = x => Number.isNaN(x) ? "–" : x.toFixed(2);
+const valid = rs => rs.filter(r => r.attention !== false && r.answers.length === 4);
 function renderResults() {
-  const all = load("atlas-responses", []), ok = all.filter(r => r.attention !== false);
-  const ans = rs => rs.flatMap(r => r.answers);
-  $("r-stats").innerHTML = `<div><b>${all.length}</b><span>responses</span></div><div><b>${ok.length}</b><span>passed attention check</span></div>
-    <div><b>${f2(mean(ans(ok).map(a => a.comp)))}</b><span>mean comprehension (0-2)</span></div><div><b>${f2(mean(ans(ok).map(a => a.intent)))}</b><span>mean intention (1-5)</span></div>`;
-  const by = V.map(v => { const rs = ok.filter(r => r.version === v), a = ans(rs); return { v, n: rs.length, comp: mean(a.map(x => x.comp)) }; });
-  $("r-chart").innerHTML = by.map(b => `<span>${V_LABEL[b.v]}</span><div class="track" data-tip="${V_LABEL[b.v]}: ${f2(b.comp)} of 2, n = ${b.n}"><div class="barfill" style="width:${b.n ? b.comp / 2 * 100 : 0}%"></div></div><span class="val">${f2(b.comp)}</span>`).join("");
-  const grp = (name, vs) => { const a = ans(ok.filter(r => vs.includes(r.version))); return `<tr><td>${name}</td><td class="num">${ok.filter(r => vs.includes(r.version)).length}</td><td class="num">${f2(mean(a.map(x => x.comp)))}</td><td class="num">${f2(mean(a.map(x => x.intent)))}</td></tr>`; };
-  $("r-effects").innerHTML = `<tr><th>Group</th><th class="num">n</th><th class="num">Comprehension</th><th class="num">Intention</th></tr>
-    <tr><td colspan="4" class="meta">Message completeness</td></tr>${grp("Typical (A + B)", ["A", "B"])}${grp("Complete (C + D)", ["C", "D"])}
-    <tr><td colspan="4" class="meta">Language</td></tr>${grp("Filipino (A + C)", ["A", "C"])}${grp("English (B + D)", ["B", "D"])}`;
-  $("r-pref").innerHTML = `<tr><th>Version</th><th class="num">Picked</th><th class="num">%</th></tr>` + V.map(v => { const c = ok.filter(r => r.pref === v).length; return `<tr><td>${V_LABEL[v]}</td><td class="num">${c}</td><td class="num">${ok.length ? Math.round(c / ok.length * 100) : 0}%</td></tr>`; }).join("");
-  $("r-haz").innerHTML = `<tr><th>Alert type</th>${V.map(v => `<th class="num">${v}</th>`).join("")}</tr>` + HAZ.map(h =>
-    `<tr><td>${esc(h.name)}</td>${V.map(v => `<td class="num">${f2(mean(ok.filter(r => r.version === v).flatMap(r => r.answers).filter(a => a.hazard === h.id).map(a => a.comp)))}</td>`).join("")}</tr>`).join("");
-  $("r-raw").innerHTML = all.length ? `<tr><th>ID</th><th>Version</th><th class="num">Comprehension</th><th>Attention</th><th>Preferred</th><th>Time</th></tr>` +
-    all.slice(-8).reverse().map(r => `<tr><td>${esc(r.id)}</td><td>${r.version}</td><td class="num">${r.answers.reduce((s, a) => s + a.comp, 0)} / 8</td><td>${r.attention === false ? "Failed" : "Passed"}</td><td>${r.pref}</td><td>${new Date(r.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</td></tr>`).join("")
-    : `<tr><td class="meta">No responses yet. Take the survey or add demo responses.</td></tr>`;
-  document.querySelectorAll("[data-tip]").forEach(el => {
-    el.onmousemove = e => { const t = $("tip"); t.textContent = el.dataset.tip; t.style.display = "block"; t.style.left = e.clientX + 12 + "px"; t.style.top = e.clientY + 12 + "px"; };
-    el.onmouseleave = () => $("tip").style.display = "none";
-  });
+  const all = load("atlas-responses", []), ok = valid(all), evals = load("atlas-evals", []);
+  const per = V.map(v => ok.filter(r => r.version === v).length);
+  const ans = (rs, hid) => rs.flatMap(r => r.answers).filter(a => !hid || a.hazard === hid);
+  const cell = (rs, hid, k) => { const a = ans(rs, hid).map(x => x[k]); return `${f2(mean(a))} <span class="meta">(${f2(sd(a))})</span>`; };
+  const group = vs => ok.filter(r => vs.includes(r.version));
+  let html = `<div class="sec"><div class="stats">
+      <div><b>${all.length}</b><span>responses saved</span></div><div><b>${ok.length}</b><span>valid (attention check passed)</span></div>
+      <div><b>${Math.min(...per)}</b><span>smallest group (target 46)</span></div><div><b>${evals.length}</b><span>system evaluations</span></div></div></div>`;
+  html += `<div class="sec"><h2>Respondents per version</h2><div class="bars">${V.map((v, i) => `<span>${VLABEL[i]}</span><div class="track"><i style="width:${Math.min(100, per[i] / 46 * 100)}%"></i></div><span class="num">${per[i]}</span>`).join("")}</div>
+    <p class="meta">Bars fill at 46 valid respondents per group, the G*Power target at α = .0125.</p></div>`;
+  html += `<div class="sec"><h2>Mean scores by alert type and version</h2><p class="meta">Comprehension is out of 5; intention to act is out of 5. Standard deviations in parentheses.</p>
+    <div class="box" style="padding:0 6px;overflow-x:auto"><table><thead><tr><th>Alert type</th><th>Score</th>${V.map((v, i) => `<th class="n">${VLABEL[i]}</th>`).join("")}<th class="n">Typical</th><th class="n">Complete</th><th class="n">Filipino</th><th class="n">English</th></tr></thead><tbody>` +
+    HAZ.map(h => ["comp", "intent"].map((k, j) => `<tr><td>${j ? "" : h.name}</td><td>${k === "comp" ? "Comprehension" : "Intention"}</td>${V.map(v => `<td class="n">${cell(group([v]), h.id, k)}</td>`).join("")}
+      <td class="n">${cell(group(["A", "B"]), h.id, k)}</td><td class="n">${cell(group(["C", "D"]), h.id, k)}</td><td class="n">${cell(group(["A", "C"]), h.id, k)}</td><td class="n">${cell(group(["B", "D"]), h.id, k)}</td></tr>`).join("")).join("") +
+    `</tbody></table></div><p class="meta">Mean intention is interpreted with Table 4: ${f2(mean(ans(ok).map(a => a.intent)))} overall = ${interp(mean(ans(ok).map(a => a.intent)), 1)}.</p></div>`;
+  html += `<div class="sec"><h2>Preferred version by alert type</h2><div class="box" style="padding:0 6px"><table><thead><tr><th>Alert type</th>${V.map((v, i) => `<th class="n">${VLABEL[i]}</th>`).join("")}<th>Recommended language</th></tr></thead><tbody>` +
+    HAZ.map(h => { const c = V.map(v => ok.filter(r => r.pref[h.id] === v).length), n = c.reduce((a, b) => a + b, 0), rec = recommendLanguage(h.id);
+      return `<tr><td>${h.name}</td>${c.map(x => `<td class="n">${x} <span class="meta">${n ? Math.round(x / n * 100) : 0}%</span></td>`).join("")}<td>${rec.lang ? `<span class="tag yes">${rec.lang === "fil" ? "Filipino" : "English"}</span>` : '<span class="tag">No clear preference</span>'}</td></tr>`; }).join("") +
+    `</tbody></table></div></div>`;
+  const noneRate = vs => { const a = ans(group(vs)); return a.length ? f2(mean(a.map(x => x.saidNone))) : "–"; };
+  html += `<div class="sec"><h2>“The alert did not say” choices</h2><p class="meta">Average number of times per alert a respondent chose it. Correct for typical alerts on two items; never correct for complete alerts.</p>
+    <div class="bars">${[["Typical (A, B)", ["A", "B"]], ["Complete (C, D)", ["C", "D"]]].map(([l, vs], i) => { const x = +noneRate(vs) || 0; return `<span>${l}</span><div class="track"><i class="${i ? "alt" : ""}" style="width:${x / 5 * 100}%"></i></div><span class="num">${noneRate(vs)}</span>`; }).join("")}</div></div>`;
+  html += `<div class="sec"><h2>System evaluation (ISO/IEC 25010)</h2>${evals.length ? `<div class="box" style="padding:0 6px"><table><thead><tr><th>Characteristic</th><th class="n">IT experts</th><th class="n">DRRM staff</th><th class="n">All</th><th>Interpretation</th></tr></thead><tbody>` +
+    ISO.map(([c], i) => { const m = role => mean(evals.filter(e => !role || e.role === role).flatMap(e => e.ratings[i])); const a = m();
+      return `<tr><td>${c}</td><td class="n">${f2(m("IT expert"))}</td><td class="n">${f2(m("DRRM staff"))}</td><td class="n">${f2(a)}</td><td>${interp(a, 2)}</td></tr>`; }).join("") + `</tbody></table></div>` : `<p class="meta">No evaluations yet. Submit one in the Evaluate tab.</p>`}</div>`;
+  html += `<div class="sec"><h2>Latest responses</h2><div class="box" style="padding:0 6px;overflow-x:auto"><table><thead><tr><th>ID</th><th>Version</th><th>City</th><th class="n">Comprehension (of 20)</th><th class="n">Mean intention</th><th>Attention</th></tr></thead><tbody>` +
+    (all.slice(-8).reverse().map(r => `<tr><td class="num">${esc(r.id)}</td><td>${r.version}</td><td>${esc(r.profile?.city || "–")}</td><td class="n">${r.answers.reduce((s, a) => s + a.comp, 0)}</td><td class="n">${f2(mean(r.answers.map(a => a.intent)))}</td><td>${r.attention === false ? '<span class="tag no">Failed</span>' : '<span class="tag yes">Passed</span>'}</td></tr>`).join("") || `<tr><td colspan="6" class="meta">No responses yet.</td></tr>`) + `</tbody></table></div></div>`;
+  $("r-body").innerHTML = html;
 }
-$("r-demo").onclick = () => {
-  for (let k = 0; k < 20; k++) {
-    const v = nextVersion(), complete = v >= 2, fil = isFil(v);
-    const answers = HAZ.map(h => ({ hazard: h.id, view: +(4 + Math.random() * 14).toFixed(1),
-      comp: (Math.random() < .9 ? 1 : 0) + (Math.random() < (complete ? .8 : .45) + (fil ? .05 : 0) ? 1 : 0),
-      intent: Math.min(5, Math.max(1, Math.round((complete ? 3.9 : 3.1) + (Math.random() - .5) * 2))) }));
-    saveResponse({ id: Math.random().toString(36).slice(2, 10), version: v, answers, attention: Math.random() > .08, pref: Math.random() < .55 ? 2 : Math.floor(Math.random() * 4) });
+function demo() {
+  const all = load("atlas-responses", []);
+  for (let n = 0; n < 40; n++) {
+    const v = n % 4, rnd = (a, b) => Math.round(a + Math.random() * (b - a));
+    const answers = shuffle([0, 1, 2, 3]).map((k, p) => { const intentItems = [0, 1, 2, 3].map(() => Math.max(1, Math.min(5, rnd(2, 4) + (v >= 2 ? 1 : 0) - (Math.random() < .2 ? 1 : 0))));
+      const compItems = [0, 1, 2, 3, 4].map(() => Math.random() < (v >= 2 ? .85 : .7) ? 1 : 0);
+      return { hazard: HAZ[k].id, position: p + 1, view: +(4 + Math.random() * 16).toFixed(1), intentItems, intent: mean(intentItems), compItems, comp: compItems.reduce((a, b) => a + b, 0), saidNone: v >= 2 ? rnd(0, 1) : rnd(1, 3) }; });
+    const pref = Object.fromEntries(HAZ.map(h => [h.id, V[Math.random() < .6 ? 3 : Math.random() < .6 ? 2 : rnd(0, 1)]]));
+    all.push({ id: Math.random().toString(36).slice(2, 10), version: V[v], profile: { age: "18–24", city: CITIES[rnd(0, 16)], lang: "Pareho / Both", filEase: "4", enEase: "4", prior: "Oo / Yes" },
+               answers, attention: Math.random() > .06, pref, at: new Date().toISOString(), demo: true });
   }
-  renderResults();
-};
-$("r-clear").onclick = () => { if (confirm("Delete all saved responses in this browser?")) { save("atlas-responses", []); save("atlas-block", []); renderResults(); } };
+  save("atlas-responses", all); renderResults(); toast("40 demo respondents added");
+}
+function csv(rows) { return rows.map(r => r.map(x => { const s = String(x ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }).join(",")).join("\n"); }
+function download(name, text) { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + text], { type: "text/csv" })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }
+$("r-demo").onclick = demo;
 $("r-csv").onclick = () => {
-  const rows = [["participant_id", "version", "completeness", "language", "hazard", "comprehension", "intention", "view_seconds", "attention_passed", "preferred_version"]];
-  load("atlas-responses", []).forEach(r => r.answers.forEach(a => rows.push([r.id, r.version, ["A", "B"].includes(r.version) ? "typical" : "complete",
-    ["A", "C"].includes(r.version) ? "filipino" : "english", a.hazard, a.comp, a.intent, a.view, r.attention !== false, r.pref])));
-  const url = URL.createObjectURL(new Blob([rows.map(r => r.join(",")).join("\n")], { type: "text/csv" }));
-  const a = document.createElement("a"); a.href = url; a.download = "alert-study-responses.csv"; document.body.appendChild(a); a.click(); a.remove();
+  const rows = [["respondent", "version", "completeness", "language", "hazard", "position", "view_seconds", "comprehension", ...[1, 2, 3, 4, 5].map(k => "comp_item" + k), "said_none",
+    "intention_mean", ...[1, 2, 3, 4].map(k => "intent_item" + k), "attention_passed", "pref_this_hazard", "age", "city", "easiest_language", "filipino_ease", "english_ease", "prior_alert", "demo"]];
+  load("atlas-responses", []).forEach(r => r.answers.forEach(a => rows.push([r.id, r.version, ["A", "B"].includes(r.version) ? "typical" : "complete", ["A", "C"].includes(r.version) ? "filipino" : "english",
+    a.hazard, a.position, a.view, a.comp, ...a.compItems, a.saidNone, a.intent.toFixed(2), ...a.intentItems, r.attention !== false, r.pref[a.hazard],
+    r.profile?.age, r.profile?.city, r.profile?.lang, r.profile?.filEase, r.profile?.enEase, r.profile?.prior, !!r.demo])));
+  download("atlas-responses.csv", csv(rows));
 };
+$("r-ecsv").onclick = () => {
+  const rows = [["evaluator", "group", "years", ...ISO.flatMap(([c]) => [c + " 1", c + " 2"])]];
+  load("atlas-evals", []).forEach(e => rows.push([e.id, e.role, e.years, ...e.ratings.flat()]));
+  download("atlas-evaluations.csv", csv(rows));
+};
+$("r-clear").onclick = () => { if (!confirm("Delete all saved responses and evaluations in this browser? This cannot be undone.")) return;
+  ["atlas-responses", "atlas-evals", "atlas-block", "atlas-submitted"].forEach(k => save(k, k === "atlas-submitted" ? false : [])); renderResults(); toast("All data cleared"); };
 
-// ===================== Init =====================
-renderActions(); compose(); renderDrafts();
+// ===================== Start =====================
+go((location.hash || "#home").slice(1) in { home: 1, survey: 1, alerts: 1, compose: 1, check: 1, evaluate: 1, results: 1 } ? location.hash.slice(1) || "home" : "home");
 </script>
 </body>
 </html>
